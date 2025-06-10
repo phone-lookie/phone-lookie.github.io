@@ -1,0 +1,34 @@
+{
+  "name": "phone-lookie",
+  "version": "1.0.0",
+  "description": "A Progressive Web App for phone number lookup",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "serve": "npx serve dist",
+    "start": "npm run build && npm run serve",
+    "dev": "npx serve .",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "generate-favicons": "node scripts/generate-favicons.js"
+  },
+  "dependencies": {
+    "clean-css": "^5.3.3",
+    "fs-extra": "^11.2.0",
+    "sharp": "^0.34.2",
+    "terser": "^5.29.2"
+  },
+  "devDependencies": {
+    "serve": "^14.2.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/phone-lookie.github.io.git"
+  },
+  "keywords": [
+    "pwa",
+    "phone",
+    "lookup",
+    "twilio"
+  ],
+  "author": "",
+  "license": "MIT"
+}
