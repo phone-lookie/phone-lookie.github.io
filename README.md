@@ -27,7 +27,7 @@ A Progressive Web App for phone number lookup using Twilio API, built with React
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/phone-lookie.github.io.git
+git clone https://github.com/phone-lookie/phone-lookie.github.io.git
 cd phone-lookie.github.io
 ```
 
