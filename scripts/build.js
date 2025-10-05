@@ -156,18 +156,48 @@ function generateFavicons() {
     execSync('node scripts/generate-favicons.js', { stdio: 'inherit' });
 }
 
-// Generate config.js
+// Generate config.js (localStorage-backed, no env vars)
 function generateConfig() {
     console.log('Generating config.js...');
     const configContent = `/**
- * Configuration file for Phone Lookie
- * Generated during build process
+ * Runtime configuration backed by localStorage for production bundle.
  */
 
-const config = {
-    TWILIO_ACCOUNT_SID: '${process.env.TWILIO_ACCOUNT_SID || ''}',
-    TWILIO_AUTH_TOKEN: '${process.env.TWILIO_AUTH_TOKEN || ''}'
-};`;
+(function(global){
+    var STORAGE_KEYS = {
+        TWILIO_ACCOUNT_SID: 'twilioAccountSid',
+        TWILIO_AUTH_TOKEN: 'twilioAuthToken'
+    };
+
+    var config = {};
+
+    Object.defineProperties(config, {
+        TWILIO_ACCOUNT_SID: {
+            get: function() {
+                try { return (global.localStorage && global.localStorage.getItem(STORAGE_KEYS.TWILIO_ACCOUNT_SID)) || ''; } catch (e) { return ''; }
+            }
+        },
+        TWILIO_AUTH_TOKEN: {
+            get: function() {
+                try { return (global.localStorage && global.localStorage.getItem(STORAGE_KEYS.TWILIO_AUTH_TOKEN)) || ''; } catch (e) { return ''; }
+            }
+        }
+    });
+
+    global.config = config;
+    global.setTwilioCredentials = function(accountSid, authToken){
+        try {
+            if (accountSid != null) global.localStorage.setItem(STORAGE_KEYS.TWILIO_ACCOUNT_SID, accountSid);
+            if (authToken != null) global.localStorage.setItem(STORAGE_KEYS.TWILIO_AUTH_TOKEN, authToken);
+        } catch (e) {}
+    };
+    global.clearTwilioCredentials = function(){
+        try {
+            global.localStorage.removeItem(STORAGE_KEYS.TWILIO_ACCOUNT_SID);
+            global.localStorage.removeItem(STORAGE_KEYS.TWILIO_AUTH_TOKEN);
+        } catch (e) {}
+    };
+})(window);`;
 
     fs.writeFileSync(path.join(paths.dist.js, 'config.js'), configContent);
 }

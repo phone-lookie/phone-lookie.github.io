@@ -1,0 +1,289 @@
+/* Custom CSS for Phone Lookie */
+
+/* CRITICAL: Override Bootstrap with maximum specificity */
+html body #root .App .container-fluid,
+html body #root .App .container {
+  max-width: none !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100% !important;
+}
+
+html body #root .App .row {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+html body #root .App .row > * {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+html body #root .App .col-12 {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Remove Bootstrap container margins and make full-width */
+.App .container,
+.App .container-fluid {
+  max-width: none !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100% !important;
+}
+
+/* Remove Bootstrap row gutters */
+.App .row {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.App .row > * {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Make the main app container full-width */
+.App {
+  width: 100vw !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-x: hidden;
+}
+
+/* Ensure body and html have no margins */
+body, html {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+}
+
+/* Force full-width on all app elements */
+.App * {
+  box-sizing: border-box;
+}
+
+/* Specific overrides for the main layout */
+.App .container-fluid {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.App .col-12 {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Keypad Styles */
+.keypad {
+    margin-top: 20px;
+}
+
+.keypad-btn {
+    height: 60px;
+    font-size: 1.2em;
+    font-weight: bold;
+    position: relative;
+    border: 1px solid #dee2e6;
+    margin: 1px;
+}
+
+/* Keypad grid spacing */
+.keypad .col-4 {
+    padding: 0;
+}
+
+.alpha {
+    font-size: 0.6em;
+    font-weight: normal;
+    color: #6c757d;
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* Phone Input Styles */
+.form-control-lg {
+    font-size: 1.1em;
+    padding: 0.75rem 1rem;
+}
+
+.input-group .btn {
+    border-left: none;
+}
+
+/* Card Styles */
+.card {
+    border: none;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border-radius: 0;
+    margin: 0;
+}
+
+.card-header {
+    border-bottom: none;
+    border-radius: 0 !important;
+}
+
+/* Button Styles */
+.btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.btn-primary:hover {
+    background-color: #0056b3;
+    border-color: #0056b3;
+}
+
+.btn-outline-light:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* History Modal Styles */
+.history-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.history-item {
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.history-item:hover {
+    background-color: #f8f9fa;
+    border-color: #007bff;
+}
+
+.history-item .phone-number {
+    font-weight: bold;
+    color: #007bff;
+}
+
+.history-item .timestamp {
+    font-size: 0.875em;
+    color: #6c757d;
+}
+
+/* Results Modal Styles */
+.result-section {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    background-color: #f8f9fa;
+}
+
+.result-section h6 {
+    color: #007bff;
+    margin-bottom: 0.5rem;
+}
+
+.result-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.result-item:last-child {
+    border-bottom: none;
+}
+
+.result-label {
+    font-weight: 500;
+    color: #495057;
+}
+
+.result-value {
+    color: #6c757d;
+}
+
+/* Loading State */
+.loading {
+    text-align: center;
+    padding: 2rem;
+}
+
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* Error State */
+.alert {
+    border-radius: 0.25rem;
+    margin-bottom: 1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .keypad-btn {
+        height: 50px;
+        font-size: 1em;
+    }
+    
+    .alpha {
+        font-size: 0.5em;
+    }
+    
+    .form-control-lg {
+        font-size: 1em;
+    }
+}
+
+/* PWA Install Button */
+#pwaInstallContainer {
+    z-index: 1050;
+}
+
+/* Modal Backdrop */
+.modal-backdrop {
+    z-index: 1040;
+}
+
+/* Focus States */
+.form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.btn:focus {
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Accessibility */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Print Styles */
+@media print {
+    .keypad,
+    .btn,
+    #pwaInstallContainer {
+        display: none !important;
+    }
+} 

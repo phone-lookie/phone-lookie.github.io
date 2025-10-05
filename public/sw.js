@@ -1,12 +1,10 @@
-const CACHE_NAME = 'phone-lookie-v5';
+const CACHE_NAME = 'phone-lookie-v6';
 const urlsToCache = [
     '/',
     '/index.html',
-    '/assets/css/styles.css',
+    '/static/js/bundle.js',
+    '/static/css/main.css',
     '/manifest.json',
-    '/assets/js/app.js',
-    '/assets/js/keypad.js',
-    '/assets/js/config.js',
     'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
     'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js',
     'https://code.jquery.com/jquery-3.6.0.min.js'

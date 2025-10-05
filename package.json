@@ -3,21 +3,35 @@
   "version": "1.0.0",
   "description": "A Progressive Web App for phone number lookup",
   "scripts": {
-    "build": "node scripts/build.js",
-    "serve": "npx serve dist",
-    "start": "npm run build && npm run serve",
-    "dev": "npx serve .",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
     "generate-favicons": "node scripts/generate-favicons.js"
   },
   "dependencies": {
-    "clean-css": "^5.3.3",
-    "fs-extra": "^11.2.0",
-    "sharp": "^0.34.2",
-    "terser": "^5.29.2"
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1",
+    "bootstrap": "^5.3.0",
+    "bootstrap-icons": "^1.11.0",
+    "jquery": "^3.6.0"
   },
   "devDependencies": {
-    "serve": "^14.2.1"
+    "sharp": "^0.33.2",
+    "fs-extra": "^11.2.0"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   },
   "repository": {
     "type": "git",
@@ -27,7 +41,8 @@
     "pwa",
     "phone",
     "lookup",
-    "twilio"
+    "twilio",
+    "react"
   ],
   "author": "",
   "license": "MIT"

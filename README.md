@@ -1,180 +1,135 @@
-# Phone Lookie
+# Phone Lookie - React PWA
 
-A Progressive Web App (PWA) for looking up phone number information using the Twilio API. The application features a modern UI with a keypad interface, real-time phone number formatting, and lookup history management.
+A Progressive Web App for phone number lookup using Twilio API, built with React.
 
 ## Features
 
-- 📱 Phone number lookup using Twilio API
-- ⌨️ Interactive keypad interface with alpha values
-- 🔄 Real-time phone number formatting
-- 📱 Progressive Web App (PWA) support
-- 🎨 Modern UI with Bootstrap 5
-- 📱 Responsive design for all devices
-- 🔒 Secure API key handling through GitHub Actions
-- 🔑 Local development support with .env file
-- 📋 Lookup history with full result storage
-- 🔍 Quick lookup from history
-- 🗑️ History management (view, delete, clear)
-- ⌨️ Keyboard support (Enter key for lookup)
-- 📋 Copy/paste support with automatic formatting
-- 🎯 Auto-focus on input field
-- 🎨 Consistent UI styling and hover effects
+- **Phone Number Lookup** with international support
+- **Vanity Number Support** - converts letters to digits (e.g., "1-800-WALGREENS")
+- **PWA (Progressive Web App)** functionality - installable on mobile and desktop
+- **Responsive Design** with Bootstrap 5
+- **Virtual Keypad** interface
+- **Lookup History** with localStorage persistence
+- **CSV Export** of lookup history
+- **Settings Management** - store Twilio credentials locally
+- **Service Worker** for offline functionality
+- **Auto-formatting** of phone numbers as you type
 
-## Prerequisites
+## Getting Started
 
-- A Twilio account with API credentials
-- Node.js (v16 or higher)
-- npm (Node Package Manager)
+### Prerequisites
 
-## Setup
+- Node.js (version 14 or higher)
+- npm or yarn
+- Twilio account with Account SID and Auth Token
+
+### Installation
 
 1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/phone-lookie.github.io.git
-   cd phone-lookie.github.io
-   ```
+```bash
+git clone https://github.com/yourusername/phone-lookie.github.io.git
+cd phone-lookie.github.io
+```
 
 2. Install dependencies:
-   ```bash
-   npm install
-   ```
+```bash
+npm install
+```
 
-3. For local development:
-   - Copy `.env.example` to `.env`
-   - Add your Twilio credentials to `.env`:
-     ```
-     TWILIO_ACCOUNT_SID=your_account_sid_here
-     TWILIO_AUTH_TOKEN=your_auth_token_here
-     ```
-   - The `js/config.js` file will be automatically generated with your credentials
-
-4. For GitHub Pages deployment:
-   - Go to your repository settings
-   - Navigate to Secrets and Variables > Actions
-   - Add the following secrets:
-     - `TWILIO_ACCOUNT_SID`
-     - `TWILIO_AUTH_TOKEN`
-
-5. Update the repository URL in `package.json` with your GitHub repository URL
-
-6. Create the `icons` directory and add PWA icons:
-   - `icons/icon-192x192.png` (192x192 pixels)
-   - `icons/icon-512x512.png` (512x512 pixels)
-
-## Development
-
-To run the application locally:
-
+3. Start the development server:
 ```bash
 npm start
 ```
 
-The application will be available at `http://localhost:3000`
+The app will open at `http://localhost:3000`.
 
-The local development server will:
-1. Read your Twilio credentials from the `.env` file
-2. Generate a `config.js` file with these credentials
-3. Start the development server
+### Configuration
 
-## Features in Detail
+1. Click the gear icon (⚙️) in the top-right corner
+2. Enter your Twilio Account SID (starts with "AC...")
+3. Enter your Twilio Auth Token
+4. Click Save
 
-### Phone Number Input
-- Real-time formatting as you type
-- Support for international numbers
-- Automatic formatting on paste
-- Enter key support for quick lookup
-- Clear button for easy reset
-- Auto-focus on page load
+Credentials are stored locally in your browser's localStorage.
 
-### Keypad Interface
-- Interactive number buttons
-- Alpha values for each number
-- Responsive design for all screen sizes
-- Visual feedback on interaction
+### Building for Production
 
-### Lookup Results
-- Comprehensive phone information
-- Carrier details
-- Caller information (when available)
-- Line type intelligence
-- SIM swap information
-- Identity match data
-- Clean, organized display
-- Modal view with back navigation
+```bash
+npm run build
+```
 
-### History Management
-- Stores up to 50 recent lookups
-- Full result data preservation
-- Quick lookup from history
-- Delete individual entries
-- Clear all history
-- Timestamp tracking
-- Interactive history items
+This creates a `build` folder with the production-ready app.
 
 ## Project Structure
 
 ```
 phone-lookie/
+├── public/
+│   ├── index.html
+│   ├── manifest.json
+│   ├── sw.js
+│   └── assets/
+│       └── images/
+│           └── icons/          # PWA icons and favicons
+├── src/
+│   ├── App.js                  # Main React component
+│   ├── App.css                 # Styles
+│   ├── index.js                # React entry point
+│   ├── index.css               # Global styles
+│   ├── config.js               # Runtime configuration (localStorage-backed)
+│   ├── phoneUtils.js           # Phone number normalization and formatting
+│   └── phoneUtils.test.js      # Unit tests for phone utilities
+├── scripts/
+│   ├── build.js                # Build script for static version
+│   └── generate-favicons.js    # Favicon generation
 ├── .github/
 │   └── workflows/
-│       └── deploy.yml
-├── css/
-│   └── styles.css
-├── js/
-│   ├── app.js
-│   ├── keypad.js
-│   └── config.js (placeholder, generated during build/development)
-├── scripts/
-│   └── setup-env.js
-├── icons/
-│   ├── icon-192x192.png
-│   └── icon-512x512.png
-├── .env.example
-├── index.html
-├── manifest.json
-├── sw.js
-├── package.json
-└── README.md
+│       └── deploy.yml          # GitHub Actions deployment
+└── package.json
 ```
 
-## Technologies Used
+## Phone Number Support
 
-- HTML5
-- CSS3
-- JavaScript (ES6+)
-- jQuery
-- Bootstrap 5
-- Twilio Lookup API
-- GitHub Actions
-- Progressive Web App (PWA)
-- Local Storage API
-- dotenv (for local development)
+The app supports various phone number formats:
 
-## Security Note
+- **US Numbers**: `(555) 123-4567`, `555-123-4567`, `5551234567`
+- **International**: `+44 20 7123 4567`, `+49 30 123 456`
+- **Vanity Numbers**: `1-800-WALGREENS`, `1-800-CALL-NOW`
+- **Auto-formatting**: Numbers are formatted as you type
+- **Auto-detection**: 10-digit numbers are assumed to be US (+1)
 
-The application uses Twilio's client-side SDK to make API calls directly from the browser. While this is convenient for deployment on GitHub Pages, please note that your Twilio credentials will be visible in the generated `config.js` file. For production use, it's recommended to:
+## API Features
 
-1. Use a server-side implementation
-2. Implement proper API key rotation
-3. Use environment-specific credentials
-4. Implement rate limiting
-5. Add request validation
+- **Twilio Lookup API** integration
+- **Carrier Information** (when available)
+- **Caller Information** (when available)
+- **Line Type Intelligence**
+- **SIM Swap Detection**
+- **Validation Status**
+
+## PWA Features
+
+- **Installable** on mobile and desktop
+- **Offline functionality** with service worker
+- **App-like experience** with standalone display
+- **Responsive design** for all screen sizes
+- **Custom icons** and splash screens
+
+## Testing
+
+Run the test suite:
+```bash
+npm test
+```
 
 ## Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- [Twilio](https://www.twilio.com/) for providing the phone number lookup API
-- [Bootstrap](https://getbootstrap.com/) for the UI framework
-- [GitHub Pages](https://pages.github.com/) for hosting
-- [Bootstrap Icons](https://icons.getbootstrap.com/) for the icon set 
+This project is licensed under the MIT License. 
