@@ -299,12 +299,18 @@ function App() {
   const handleKeypadClick = (value) => {
     if (value === '+') {
       if (!phoneNumber.startsWith('+')) {
-        setPhoneNumber('+' + phoneNumber);
+        const newValue = '+' + phoneNumber;
+        const candidate = normalizeToE164Candidate(newValue);
+        const formatted = candidate ? formatInternationalFlexible(candidate) : newValue;
+        setPhoneNumber(formatted);
       }
       return;
     }
     
-    setPhoneNumber(prev => prev + value);
+    const newValue = phoneNumber + value;
+    const candidate = normalizeToE164Candidate(newValue);
+    const formatted = candidate ? formatInternationalFlexible(candidate) : newValue;
+    setPhoneNumber(formatted);
   };
 
   return (
