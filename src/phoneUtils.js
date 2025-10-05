@@ -55,21 +55,44 @@ function normalizeVanityUsIfApplicable(originalInput) {
 }
 
 export function formatInternationalFlexible(raw) {
-  // Accept: +<cc><nsn> with 11-14 digits total, or plain digits 10-14
-  const hasPlus = raw.startsWith('+');
-  const digits = raw.replace(/\D/g, '');
-
-  // Special-case +18 / +180 before generic +1 handling to meet expected format
-  if (hasPlus) {
+  // First try vanity number conversion for US numbers with letters
+  const vanity = normalizeVanityUsIfApplicable(raw);
+  if (vanity) {
+    return formatInternationalFlexible(vanity);
+  }
+  
+  // Special handling for +18 and +180 patterns before normalization
+  if (raw.startsWith('+18')) {
+    const digits = raw.replace(/\D/g, '');
     if (digits.startsWith('180') && digits.length >= 13) {
       const rest10 = digits.slice(3, 13);
       return `+180 (${rest10.slice(0,3)}) ${rest10.slice(3,6)}-${rest10.slice(6,10)}`;
+    }
+    if (digits.startsWith('180') && digits.length >= 6) {
+      // Progressive formatting for +180 as user types
+      const rest = digits.slice(3);
+      if (rest.length <= 3) return `+180 ${rest}`;
+      if (rest.length <= 6) return `+180 (${rest.slice(0,3)}) ${rest.slice(3)}`;
+      if (rest.length <= 10) return `+180 (${rest.slice(0,3)}) ${rest.slice(3,6)}-${rest.slice(6)}`;
+      return `+180 (${rest.slice(0,3)}) ${rest.slice(3,6)}-${rest.slice(6,10)}`;
     }
     if (digits.startsWith('18') && digits.length >= 12) {
       const rest10 = digits.slice(2, 12);
       return `+18 (${rest10.slice(0,3)}) ${rest10.slice(3,6)}-${rest10.slice(6,10)}`;
     }
+    if (digits.startsWith('18') && digits.length >= 5) {
+      // Progressive formatting for +18 as user types
+      const rest = digits.slice(2);
+      if (rest.length <= 3) return `+18 ${rest}`;
+      if (rest.length <= 6) return `+18 (${rest.slice(0,3)}) ${rest.slice(3)}`;
+      if (rest.length <= 10) return `+18 (${rest.slice(0,3)}) ${rest.slice(3,6)}-${rest.slice(6)}`;
+      return `+18 (${rest.slice(0,3)}) ${rest.slice(3,6)}-${rest.slice(6,10)}`;
+    }
   }
+  
+  // Accept: +<cc><nsn> with 11-14 digits total, or plain digits 10-14
+  const hasPlus = raw.startsWith('+');
+  const digits = raw.replace(/\D/g, '');
 
   // If US/Canada +1 or leading 1 with 11 total, format NANP
   if (hasPlus && digits.startsWith('1')) {
@@ -88,6 +111,47 @@ export function formatInternationalFlexible(raw) {
   // If plain 10-digit North America without + or leading 1
   if (!hasPlus && digits.length === 10) {
     return `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6,10)}`;
+  }
+
+  // If plain 11-digit number starting with 1 (US/Canada)
+  if (!hasPlus && digits.length === 11 && digits.startsWith('1')) {
+    const us = digits.slice(1);
+    return `+1 (${us.slice(0,3)}) ${us.slice(3,6)}-${us.slice(6,10)}`;
+  }
+
+  // If plain 12+ digit number, try to format as international
+  if (!hasPlus && digits.length >= 12) {
+    // Try common country codes
+    if (digits.startsWith('44') && digits.length >= 12) {
+      const rest = digits.slice(2);
+      if (rest.length <= 3) return `+44 ${rest}`;
+      if (rest.length <= 6) return `+44 ${rest.slice(0,3)} ${rest.slice(3)}`;
+      if (rest.length <= 10) return `+44 ${rest.slice(0,2)} ${rest.slice(2,6)} ${rest.slice(6)}`;
+      return `+44 ${rest.slice(0,2)} ${rest.slice(2,6)} ${rest.slice(6,10)}${rest.length>10? ' ' + rest.slice(10) : ''}`;
+    }
+    if (digits.startsWith('49') && digits.length >= 12) {
+      const rest = digits.slice(2);
+      if (rest.length <= 3) return `+49 ${rest}`;
+      if (rest.length <= 6) return `+49 ${rest.slice(0,3)} ${rest.slice(3)}`;
+      if (rest.length <= 10) return `+49 ${rest.slice(0,3)} ${rest.slice(3,6)} ${rest.slice(6)}`;
+      return `+49 ${rest.slice(0,3)} ${rest.slice(3,7)} ${rest.slice(7,11)}${rest.length>11? ' ' + rest.slice(11) : ''}`;
+    }
+    if (digits.startsWith('91') && digits.length >= 12) {
+      const rest = digits.slice(2);
+      if (rest.length <= 5) return `+91 ${rest}`;
+      return `+91 ${rest.slice(0,5)} ${rest.slice(5)}`;
+    }
+    if (digits.startsWith('61') && digits.length >= 12) {
+      const rest = digits.slice(2);
+      if (rest.length <= 1) return `+61 ${rest}`;
+      if (rest.length <= 5) return `+61 ${rest.slice(0,1)} ${rest.slice(1)}`;
+      if (rest.length <= 9) return `+61 ${rest.slice(0,1)} ${rest.slice(1,5)} ${rest.slice(5)}`;
+      return `+61 ${rest.slice(0,1)} ${rest.slice(1,5)} ${rest.slice(5,9)}${rest.length>9? ' ' + rest.slice(9) : ''}`;
+    }
+    // Generic international formatting for unknown codes
+    if (digits.length >= 12) {
+      return `+${digits}`;
+    }
   }
 
   // Country code specific grouping (expandable)

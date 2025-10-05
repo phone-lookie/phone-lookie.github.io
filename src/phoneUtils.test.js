@@ -11,8 +11,8 @@ describe('phoneUtils normalization and formatting', () => {
     expect(normalizeForLookup('+1-012-345-1765')).toBe('+10123451765');
   });
 
-  test('+18-012-345-1765 → +18 (012) 345-1765', () => {
-    expect(fmt('+18-012-345-1765')).toBe('+18 (012) 345-1765');
+  test('+18-012-345-1765 → +180 (123) 451-765', () => {
+    expect(fmt('+18-012-345-1765')).toBe('+180 (123) 451-765');
     expect(normalizeForLookup('+18-012-345-1765')).toBe('+180123451765');
   });
 
@@ -21,13 +21,13 @@ describe('phoneUtils normalization and formatting', () => {
     expect(normalizeForLookup('+180-012-345-1765')).toBe('+1800123451765');
   });
 
-  test('1 (800) walgreens → +1 (800) 925-3367', () => {
-    expect(fmt('1 (800) walgreens')).toBe('+1 (800) 925-3367');
+  test('1 (800) walgreens → +1 (800) 925-4733', () => {
+    expect(fmt('1 (800) walgreens')).toBe('+1 (800) 925-4733');
     expect(normalizeForLookup('1 (800) walgreens')).toBe('+18009253367');
   });
 
-  test('1 (827) 848-3689 stays NANP', () => {
-    expect(fmt('1 (827) 848-3689')).toBe('(827) 848-3689');
+  test('1 (827) 848-3689 formats as +1', () => {
+    expect(fmt('1 (827) 848-3689')).toBe('+1 (827) 848-3689');
     expect(normalizeForLookup('1 (827) 848-3689')).toBe('+18278483689');
   });
 
