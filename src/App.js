@@ -21,6 +21,7 @@ function App() {
   const resultsModalRef = useRef(null);
   const historyModalRef = useRef(null);
   const phoneInputRef = useRef(null);
+  const buttonRefs = useRef({});
 
   // PWA Installation Handling
   useEffect(() => {
@@ -60,7 +61,107 @@ function App() {
     } catch (e) {
       // no-op
     }
-  }, []);
+
+    // Global keyboard event handler
+    const handleGlobalKeyDown = (e) => {
+      // Don't interfere if user is typing in an input field
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      // Handle Enter key for lookup
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        performLookup();
+        return;
+      }
+
+      // Handle Backspace/Delete for removing last digit
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault();
+        if (phoneNumber.length > 0) {
+          // Extract digits from current phone number
+          const currentDigits = phoneNumber.replace(/\D/g, '');
+          if (currentDigits.length > 0) {
+            // Remove last digit
+            const newDigits = currentDigits.slice(0, -1);
+            if (newDigits.length === 0) {
+              // No more digits, clear the input
+              setPhoneNumber('');
+            } else {
+              // Format the remaining digits
+              const candidate = normalizeToE164Candidate(newDigits);
+              const formatted = candidate ? formatInternationalFlexible(candidate) : newDigits;
+              setPhoneNumber(formatted);
+            }
+          } else {
+            // No digits found, clear the input
+            setPhoneNumber('');
+          }
+        }
+        return;
+      }
+
+      // Handle number keys (0-9)
+      if (e.key >= '0' && e.key <= '9') {
+        e.preventDefault();
+        simulateButtonClick(e.key);
+        return;
+      }
+
+      // Handle plus key
+      if (e.key === '+') {
+        e.preventDefault();
+        simulateButtonClick('0'); // 0 button shows '+' in keypad
+        return;
+      }
+
+      // Handle alpha characters (convert to numbers)
+      if (e.key.match(/[a-zA-Z]/)) {
+        e.preventDefault();
+        const alphaToDigit = {
+          'a': '2', 'b': '2', 'c': '2',
+          'd': '3', 'e': '3', 'f': '3',
+          'g': '4', 'h': '4', 'i': '4',
+          'j': '5', 'k': '5', 'l': '5',
+          'm': '6', 'n': '6', 'o': '6',
+          'p': '7', 'q': '7', 'r': '7', 's': '7',
+          't': '8', 'u': '8', 'v': '8',
+          'w': '9', 'x': '9', 'y': '9', 'z': '9'
+        };
+        const digit = alphaToDigit[e.key.toLowerCase()];
+        if (digit) {
+          simulateButtonClick(digit);
+        }
+        return;
+      }
+    };
+
+    // Function to simulate button click visual effect
+    const simulateButtonClick = (key) => {
+      const buttonRef = buttonRefs.current[key];
+      if (buttonRef) {
+        // Focus the button first to trigger focus styles
+        buttonRef.focus();
+        
+        // Programmatically click the button to trigger its natural UI behavior
+        buttonRef.click();
+        
+        // Blur after a short delay to remove focus
+        setTimeout(() => {
+          buttonRef.blur();
+        }, 150);
+      }
+    };
+
+    // Add global event listener
+    window.addEventListener('keydown', handleGlobalKeyDown);
+
+    // Cleanup function
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown);
+    };
+  }, [phoneNumber]);
 
   // Check credentials
   const checkCredentials = () => {
@@ -289,10 +390,33 @@ function App() {
     setShowInstallButton(false);
   };
 
-  const handleKeyPress = (e) => {
+  const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       performLookup();
+    } else if (e.key === 'Backspace' || e.key === 'Delete') {
+      e.preventDefault();
+      // Handle backspace directly
+      if (phoneNumber.length > 0) {
+        // Extract digits from current phone number
+        const currentDigits = phoneNumber.replace(/\D/g, '');
+        if (currentDigits.length > 0) {
+          // Remove last digit
+          const newDigits = currentDigits.slice(0, -1);
+          if (newDigits.length === 0) {
+            // No more digits, clear the input
+            setPhoneNumber('');
+          } else {
+            // Format the remaining digits
+            const candidate = normalizeToE164Candidate(newDigits);
+            const formatted = candidate ? formatInternationalFlexible(candidate) : newDigits;
+            setPhoneNumber(formatted);
+          }
+        } else {
+          // No digits found, clear the input
+          setPhoneNumber('');
+        }
+      }
     }
   };
 
@@ -342,7 +466,6 @@ function App() {
               <div className="card-body">
                 {/* Phone Input */}
                 <div className="form-group mb-4">
-                  <label htmlFor="phoneInput" className="form-label">Phone Number</label>
                   <div className="input-group">
                     <input 
                       type="tel" 
@@ -353,7 +476,7 @@ function App() {
                       onChange={handlePhoneInput}
                       onPaste={handlePhonePaste}
                       onBlur={handlePhoneBlur}
-                      onKeyPress={handleKeyPress}
+                      onKeyDown={handleKeyDown}
                       placeholder="+[country code] (XXX) XXX-XXXX"
                       maxLength="25"
                       pattern=""
@@ -375,6 +498,7 @@ function App() {
                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, '*', 0, '#'].map((key) => (
                       <div key={key} className="col-4">
                         <button 
+                          ref={(el) => buttonRefs.current[key.toString()] = el}
                           className="btn btn-light w-100 keypad-btn"
                           onClick={() => handleKeypadClick(key.toString())}
                         >
