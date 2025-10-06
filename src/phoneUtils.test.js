@@ -23,7 +23,7 @@ describe('phoneUtils normalization and formatting', () => {
 
   test('1 (800) walgreens → +1 (800) 925-4733', () => {
     expect(fmt('1 (800) walgreens')).toBe('+1 (800) 925-4733');
-    expect(normalizeForLookup('1 (800) walgreens')).toBe('+18009253367');
+    expect(normalizeForLookup('1 (800) walgreens')).toBe('+18009254733');
   });
 
   test('1 (827) 848-3689 formats as +1', () => {

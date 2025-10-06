@@ -47,9 +47,12 @@ function normalizeVanityUsIfApplicable(originalInput) {
   const area = m[1];
   const lettersOnly = (originalInput || '').replace(/[^A-Za-z]/g, '');
   if (lettersOnly.length < 7) return null;
+  
+  // For vanity numbers, we need exactly 7 digits after the area code
+  // Take first 3 letters + next 4 letters (not last 4)
   const first3 = lettersOnly.slice(0, 3);
-  const last4 = lettersOnly.slice(-4);
-  const local7 = mapLettersToDigits(first3) + mapLettersToDigits(last4);
+  const next4 = lettersOnly.slice(3, 7);
+  const local7 = mapLettersToDigits(first3) + mapLettersToDigits(next4);
   if (local7.length !== 7) return null;
   return '+1' + area + local7;
 }
