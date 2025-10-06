@@ -24,6 +24,12 @@ export function stripAllowedPunctuation(value) {
 }
 
 export function normalizeToE164Candidate(input) {
+  // First check if this is a vanity number before converting letters
+  const vanity = normalizeVanityUsIfApplicable(input);
+  if (vanity) {
+    return vanity;
+  }
+  
   // 1) convert alpha to digits
   let value = convertAlphaToDigits(input);
   // 2) strip allowed punctuation
@@ -58,10 +64,13 @@ function normalizeVanityUsIfApplicable(originalInput) {
 }
 
 export function formatInternationalFlexible(raw) {
-  // First try vanity number conversion for US numbers with letters
-  const vanity = normalizeVanityUsIfApplicable(raw);
-  if (vanity) {
-    return formatInternationalFlexible(vanity);
+  // Handle vanity numbers first - they are always +1 followed by 10 digits
+  if (raw.startsWith('+1') && raw.length === 12) {
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length === 11 && digits.startsWith('1')) {
+      const us = digits.slice(1);
+      return `+1 (${us.slice(0,3)}) ${us.slice(3,6)}-${us.slice(6,10)}`;
+    }
   }
   
   // Special handling for +18 and +180 patterns before normalization
