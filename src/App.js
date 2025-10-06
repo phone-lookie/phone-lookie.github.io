@@ -54,6 +54,64 @@ function App() {
       setLookupHistory(JSON.parse(savedHistory));
     }
 
+    // Prevent mobile zoom and touch gestures
+    const preventZoom = (e) => {
+      if (e.touches && e.touches.length > 1) {
+        e.preventDefault();
+      }
+    };
+
+    const preventScroll = (e) => {
+      // Prevent overscroll bounce on iOS
+      if (e.target === document.body || e.target === document.documentElement) {
+        e.preventDefault();
+      }
+    };
+
+    const preventTouchMove = (e) => {
+      // Prevent default touch behaviors that could cause zooming or scrolling
+      if (e.touches && e.touches.length > 1) {
+        e.preventDefault();
+      }
+    };
+
+    // Add event listeners
+    document.addEventListener('touchstart', preventZoom, { passive: false });
+    document.addEventListener('touchmove', preventZoom, { passive: false });
+    document.addEventListener('touchmove', preventScroll, { passive: false });
+    document.addEventListener('touchmove', preventTouchMove, { passive: false });
+    document.addEventListener('gesturestart', (e) => e.preventDefault());
+    document.addEventListener('gesturechange', (e) => e.preventDefault());
+    document.addEventListener('gestureend', (e) => e.preventDefault());
+
+    // Prevent double-tap zoom
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', (e) => {
+      const now = new Date().getTime();
+      if (now - lastTouchEnd <= 300) {
+        e.preventDefault();
+      }
+      lastTouchEnd = now;
+    }, { passive: false });
+
+    // Cleanup function
+    return () => {
+      document.removeEventListener('touchstart', preventZoom);
+      document.removeEventListener('touchmove', preventZoom);
+      document.removeEventListener('touchmove', preventScroll);
+      document.removeEventListener('touchmove', preventTouchMove);
+      document.removeEventListener('gesturestart', (e) => e.preventDefault());
+      document.removeEventListener('gesturechange', (e) => e.preventDefault());
+      document.removeEventListener('gestureend', (e) => e.preventDefault());
+      document.removeEventListener('touchend', (e) => {
+        const now = new Date().getTime();
+        if (now - lastTouchEnd <= 300) {
+          e.preventDefault();
+        }
+        lastTouchEnd = now;
+      });
+    };
+
     // Initialize settings fields from localStorage-backed config
     try {
       setAccountSid(config.TWILIO_ACCOUNT_SID || '');
@@ -431,7 +489,18 @@ function App() {
       return;
     }
     
-    const newValue = phoneNumber + value;
+    // Check if we already have a complete vanity number (11 digits starting with +1)
+    if (phoneNumber.startsWith('+1') && phoneNumber.length === 12) {
+      const digits = phoneNumber.replace(/\D/g, '');
+      if (digits.length === 11 && digits.startsWith('1')) {
+        // We have a complete vanity number, don't add more characters
+        return;
+      }
+    }
+    
+    // Extract digits from current phone number to handle vanity numbers properly
+    const currentDigits = phoneNumber.replace(/\D/g, '');
+    const newValue = currentDigits + value;
     const candidate = normalizeToE164Candidate(newValue);
     const formatted = candidate ? formatInternationalFlexible(candidate) : newValue;
     setPhoneNumber(formatted);

@@ -8,12 +8,14 @@ A Progressive Web App for phone number lookup using Twilio API, built with React
 - **Vanity Number Support** - converts letters to digits (e.g., "1-800-WALGREENS")
 - **PWA (Progressive Web App)** functionality - installable on mobile and desktop
 - **Responsive Design** with Bootstrap 5
-- **Virtual Keypad** interface
+- **Virtual Keypad** interface with keyboard support
 - **Lookup History** with localStorage persistence
 - **CSV Export** of lookup history
 - **Settings Management** - store Twilio credentials locally
 - **Service Worker** for offline functionality
 - **Auto-formatting** of phone numbers as you type
+- **Mobile-Optimized** - prevents pinch zoom and overscroll bounce
+- **Global Keyboard Support** - type numbers even when input isn't focused
 
 ## Getting Started
 
@@ -65,23 +67,19 @@ This creates a `build` folder with the production-ready app.
 ```
 phone-lookie/
 ├── public/
-│   ├── index.html
-│   ├── manifest.json
-│   ├── sw.js
-│   └── assets/
-│       └── images/
-│           └── icons/          # PWA icons and favicons
+│   ├── index.html              # Main HTML file with PWA meta tags
+│   ├── manifest.json           # PWA manifest
+│   ├── sw.js                   # Service worker
+│   └── static/
+│       └── icons/              # PWA icons and favicons
 ├── src/
 │   ├── App.js                  # Main React component
-│   ├── App.css                 # Styles
+│   ├── App.css                 # Styles with mobile optimizations
 │   ├── index.js                # React entry point
 │   ├── index.css               # Global styles
 │   ├── config.js               # Runtime configuration (localStorage-backed)
 │   ├── phoneUtils.js           # Phone number normalization and formatting
 │   └── phoneUtils.test.js      # Unit tests for phone utilities
-├── scripts/
-│   ├── build.js                # Build script for static version
-│   └── generate-favicons.js    # Favicon generation
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml          # GitHub Actions deployment
@@ -93,10 +91,11 @@ phone-lookie/
 The app supports various phone number formats:
 
 - **US Numbers**: `(555) 123-4567`, `555-123-4567`, `5551234567`
-- **International**: `+44 20 7123 4567`, `+49 30 123 456`
-- **Vanity Numbers**: `1-800-WALGREENS`, `1-800-CALL-NOW`
-- **Auto-formatting**: Numbers are formatted as you type
+- **International**: `+44 20 7123 4567`, `+49 30 123 456`, `+18 (012) 345-1765`
+- **Vanity Numbers**: `1-800-WALGREENS`, `1-800-CALL-NOW` (converts to `+1 (800) 925-4733`)
+- **Auto-formatting**: Numbers are formatted as you type with progressive formatting
 - **Auto-detection**: 10-digit numbers are assumed to be US (+1)
+- **Keyboard & Keypad**: Both keyboard input and virtual keypad work identically
 
 ## API Features
 
@@ -114,6 +113,19 @@ The app supports various phone number formats:
 - **App-like experience** with standalone display
 - **Responsive design** for all screen sizes
 - **Custom icons** and splash screens
+- **Mobile-optimized** touch handling
+- **Prevents pinch zoom** and overscroll bounce on iOS/Android
+
+## Mobile Optimization
+
+The app is specifically optimized for mobile devices:
+
+- **No Pinch Zoom**: Prevents accidental zooming on touch devices
+- **No Overscroll Bounce**: Eliminates the rubber band effect on iOS
+- **Touch-Friendly**: Large buttons and touch targets
+- **Global Keyboard**: Type numbers even when the input field isn't focused
+- **Visual Feedback**: Keypad buttons show press effects when corresponding keys are pressed
+- **PWA Installation**: Can be installed as a native app on mobile devices
 
 ## Testing
 
