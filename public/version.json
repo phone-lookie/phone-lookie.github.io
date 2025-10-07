@@ -1,8 +1,8 @@
 {
-  "version": "1.0.1",
-  "gitHash": "ff15129",
-  "gitHashFull": "ff15129bc2d64d52497ae378887dfa930d450588",
-  "buildTimestamp": "2025-10-07T16:14:13Z",
+  "version": "1.0.2",
+  "gitHash": "f301213",
+  "gitHashFull": "f3012136b04e7947379dee2808447a78cfc19c20",
+  "buildTimestamp": "2025-10-07T16:15:04Z",
   "gitBranch": "main",
-  "buildVersion": "1.0.1+ff15129"
+  "buildVersion": "1.0.2+f301213"
 }
