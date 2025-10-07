@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import './App.css';
 import { convertAlphaToDigits, normalizeToE164Candidate, formatInternationalFlexible, normalizeForLookup } from './phoneUtils';
 import config, { setTwilioCredentials, clearTwilioCredentials } from './config';
+import VERSION_INFO from './version';
 
 function App() {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -19,6 +20,8 @@ function App() {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
   const [jsonData, setJsonData] = useState(null);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [waitingWorker, setWaitingWorker] = useState(null);
   
   const resultsModalRef = useRef(null);
   const historyModalRef = useRef(null);
@@ -39,15 +42,44 @@ function App() {
       setShowInstallButton(false);
     }
 
-    // Service Worker Registration
+    // Service Worker Registration with Update Handling
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js')
         .then(registration => {
           console.log('ServiceWorker registration successful');
+          
+          // Check for updates immediately
+          registration.update();
+          
+          // Handle service worker updates
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            if (newWorker) {
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  // New service worker is installed and waiting
+                  setWaitingWorker(newWorker);
+                  setUpdateAvailable(true);
+                }
+              });
+            }
+          });
         })
         .catch(err => {
           console.log('ServiceWorker registration failed: ', err);
         });
+
+      // Listen for messages from service worker
+      navigator.serviceWorker.addEventListener('message', event => {
+        if (event.data && event.data.type === 'UPDATE_AVAILABLE') {
+          setUpdateAvailable(true);
+        }
+      });
+
+      // Handle controller change (when new service worker takes control)
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        window.location.reload();
+      });
     }
 
     // Load history from localStorage
@@ -222,6 +254,20 @@ function App() {
       window.removeEventListener('keydown', handleGlobalKeyDown);
     };
   }, [phoneNumber]);
+
+  // Handle update banner visibility
+  useEffect(() => {
+    if (updateAvailable) {
+      document.body.classList.add('update-available');
+    } else {
+      document.body.classList.remove('update-available');
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      document.body.classList.remove('update-available');
+    };
+  }, [updateAvailable]);
 
   // Check credentials
   const checkCredentials = () => {
@@ -445,6 +491,18 @@ function App() {
     setIsJsonModalOpen(true);
   };
 
+  const handleUpdateApp = () => {
+    if (waitingWorker) {
+      waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+    }
+    setUpdateAvailable(false);
+    setWaitingWorker(null);
+  };
+
+  const dismissUpdate = () => {
+    setUpdateAvailable(false);
+  };
+
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
 
@@ -612,6 +670,32 @@ function App() {
         </div>
       </div>
 
+      {/* Update Available Banner */}
+      {updateAvailable && (
+        <div className="position-fixed top-0 start-0 end-0 p-3" style={{zIndex: 1080, backgroundColor: '#28a745'}}>
+          <div className="d-flex justify-content-between align-items-center text-white">
+            <div>
+              <i className="bi bi-arrow-clockwise me-2"></i>
+              <strong>Update Available!</strong> A new version of the app is ready.
+            </div>
+            <div>
+              <button 
+                className="btn btn-light btn-sm me-2"
+                onClick={handleUpdateApp}
+              >
+                <i className="bi bi-arrow-clockwise"></i> Update Now
+              </button>
+              <button 
+                className="btn btn-outline-light btn-sm"
+                onClick={dismissUpdate}
+              >
+                <i className="bi bi-x"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* PWA Install Button */}
       {showInstallButton && (
         <div className="position-fixed bottom-0 start-50 translate-middle-x mb-3">
@@ -660,6 +744,35 @@ function App() {
                   </div>
                   <div className="alert alert-warning" role="alert">
                     Your credentials are stored locally on this device via localStorage.
+                  </div>
+                  
+                  {/* Version Information */}
+                  <div className="mt-4 pt-3 border-top">
+                    <h6 className="text-muted mb-2">Version Information</h6>
+                    <div className="row">
+                      <div className="col-6">
+                        <small className="text-muted">Version:</small><br />
+                        <code>{VERSION_INFO.version}</code>
+                      </div>
+                      <div className="col-6">
+                        <small className="text-muted">Build:</small><br />
+                        <code>{VERSION_INFO.buildVersion}</code>
+                      </div>
+                    </div>
+                    <div className="row mt-2">
+                      <div className="col-6">
+                        <small className="text-muted">Git Hash:</small><br />
+                        <code>{VERSION_INFO.gitHash}</code>
+                      </div>
+                      <div className="col-6">
+                        <small className="text-muted">Branch:</small><br />
+                        <code>{VERSION_INFO.gitBranch}</code>
+                      </div>
+                    </div>
+                    <div className="mt-2">
+                      <small className="text-muted">Build Time:</small><br />
+                      <code>{new Date(VERSION_INFO.buildTimestamp).toLocaleString()}</code>
+                    </div>
                   </div>
                 </div>
                 <div className="modal-footer">

@@ -290,6 +290,26 @@ body, html {
     z-index: 1050;
 }
 
+/* Update Banner */
+.update-banner {
+    z-index: 1080;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+    }
+    to {
+        transform: translateY(0);
+    }
+}
+
+/* Adjust main content when update banner is visible */
+body.update-available {
+    padding-top: 60px;
+}
+
 /* Modal Backdrop */
 .modal-backdrop {
     z-index: 1040;

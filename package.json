@@ -1,10 +1,13 @@
 {
   "name": "phone-lookie",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A Progressive Web App for phone number lookup",
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "build:version": "./scripts/build-with-version.sh",
+    "version:generate": "./scripts/generate-version.sh",
+    "version:bump": "./scripts/bump-version.sh",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },

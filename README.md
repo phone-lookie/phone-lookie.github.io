@@ -62,6 +62,19 @@ npm run build
 
 This creates a `build` folder with the production-ready app.
 
+### Scripts
+
+The `scripts/` folder contains build and version management utilities:
+
+- **`generate-version.sh`**: Creates version information from package.json + git hash
+- **`build-with-version.sh`**: Enhanced build script with version injection
+- **`bump-version.sh`**: Increments package version for testing updates
+
+These scripts are also available as npm commands:
+- `npm run version:generate` - Generate version info
+- `npm run version:bump` - Bump version for testing  
+- `npm run build:version` - Build with version injection
+
 ## Project Structure
 
 ```
@@ -83,6 +96,10 @@ phone-lookie/
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml          # GitHub Actions deployment
+├── scripts/                    # Build and version management scripts
+│   ├── generate-version.sh     # Generates version info from package.json + git
+│   ├── build-with-version.sh   # Build script with version injection
+│   └── bump-version.sh         # Version bump script for testing updates
 └── package.json
 ```
 
@@ -115,6 +132,8 @@ The app supports various phone number formats:
 - **Custom icons** and splash screens
 - **Mobile-optimized** touch handling
 - **Prevents pinch zoom** and overscroll bounce on iOS/Android
+- **Automatic Updates** - detects new versions and prompts users to update
+- **Smart Caching** - different caching strategies for different types of content
 
 ## Mobile Optimization
 
@@ -126,6 +145,60 @@ The app is specifically optimized for mobile devices:
 - **Global Keyboard**: Type numbers even when the input field isn't focused
 - **Visual Feedback**: Keypad buttons show press effects when corresponding keys are pressed
 - **PWA Installation**: Can be installed as a native app on mobile devices
+
+## Service Worker & Updates
+
+The app includes an intelligent service worker that handles caching and automatic updates:
+
+### Caching Strategies
+
+- **Cache-First**: Static assets (JS, CSS, images) are served from cache for fast loading
+- **Network-First**: API calls to Twilio are always fetched fresh from the network
+- **Stale-While-Revalidate**: Other resources are served from cache while updating in background
+
+### Update Detection
+
+- **Automatic Detection**: The service worker automatically detects when a new version is available
+- **Update Banner**: A green banner appears at the top when updates are available
+- **User Control**: Users can choose to update immediately or dismiss the notification
+- **Seamless Updates**: Updates are applied without losing user data or settings
+
+### Version System
+
+The app uses a sophisticated version system that combines:
+- **Package Version**: From `package.json` (semantic versioning)
+- **Git Commit Hash**: Short hash from the current commit
+- **Build Version**: Format: `{package-version}+{git-hash}` (e.g., `1.0.1+ff15129`)
+
+### Testing Updates
+
+To test the update functionality:
+
+1. **Bump Version**: Run the version bump script:
+```bash
+npm run version:bump
+# or
+./scripts/bump-version.sh
+```
+
+2. **Build with Version**: Build the app with version injection:
+```bash
+npm run build:version
+# or
+./scripts/build-with-version.sh
+```
+
+3. **Deploy** the updated version
+4. **Open** the app in a browser
+5. **Update Banner** will appear automatically
+6. **Click "Update Now"** to apply the update
+
+### Version Information
+
+You can view detailed version information in the app:
+1. Open **Settings** (gear icon)
+2. Scroll to the bottom to see **Version Information** section
+3. View package version, build version, git hash, branch, and build timestamp
 
 ## Testing
 
