@@ -748,30 +748,16 @@ function App() {
                   
                   {/* Version Information */}
                   <div className="mt-4 pt-3 border-top">
-                    <h6 className="text-muted mb-2">Version Information</h6>
+                    <h6 className="text-dark mb-2">Version Information</h6>
                     <div className="row">
                       <div className="col-6">
-                        <small className="text-muted">Version:</small><br />
-                        <code>{VERSION_INFO.version}</code>
+                        <small className="text-dark">Version:</small><br />
+                        <code className="text-dark">{VERSION_INFO.version}</code>
                       </div>
                       <div className="col-6">
-                        <small className="text-muted">Build:</small><br />
-                        <code>{VERSION_INFO.buildVersion}</code>
+                        <small className="text-dark">Build:</small><br />
+                        <code className="text-dark">{VERSION_INFO.buildVersion}</code>
                       </div>
-                    </div>
-                    <div className="row mt-2">
-                      <div className="col-6">
-                        <small className="text-muted">Git Hash:</small><br />
-                        <code>{VERSION_INFO.gitHash}</code>
-                      </div>
-                      <div className="col-6">
-                        <small className="text-muted">Branch:</small><br />
-                        <code>{VERSION_INFO.gitBranch}</code>
-                      </div>
-                    </div>
-                    <div className="mt-2">
-                      <small className="text-muted">Build Time:</small><br />
-                      <code>{new Date(VERSION_INFO.buildTimestamp).toLocaleString()}</code>
                     </div>
                   </div>
                 </div>
