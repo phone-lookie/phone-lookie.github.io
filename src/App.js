@@ -17,6 +17,8 @@ function App() {
   const [isResultsOpen, setIsResultsOpen] = useState(false);
   const [resultsData, setResultsData] = useState(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isJsonModalOpen, setIsJsonModalOpen] = useState(false);
+  const [jsonData, setJsonData] = useState(null);
   
   const resultsModalRef = useRef(null);
   const historyModalRef = useRef(null);
@@ -438,6 +440,11 @@ function App() {
     document.body.removeChild(link);
   };
 
+  const openJsonModal = (data) => {
+    setJsonData(data);
+    setIsJsonModalOpen(true);
+  };
+
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
 
@@ -726,6 +733,9 @@ function App() {
                   )}
                 </div>
                 <div className="modal-footer">
+                  <button type="button" className="btn btn-outline-info me-auto" onClick={() => openJsonModal(resultsData)}>
+                    <i className="bi bi-code"></i> View JSON
+                  </button>
                   <button type="button" className="btn btn-primary" onClick={() => setIsResultsOpen(false)}>Close</button>
                 </div>
               </div>
@@ -753,11 +763,25 @@ function App() {
                     const cName = item.data?.carrier?.name || item.data?.line_type_intelligence?.carrier_name || 'Unknown';
                     const cType = item.data?.carrier?.type || item.data?.line_type_intelligence?.type || 'Unknown';
                     return (
-                      <div key={index} className="history-item" onClick={() => { setResultsData(item.data); setIsResultsOpen(true); setIsHistoryOpen(false); }}>
-                        <div className="timestamp">{new Date(item.timestamp).toLocaleString()}</div>
-                        <div className="phone-number">{formatPhoneNumber(item.phoneNumber)}</div>
-                        <div className="carrier-info">{cName} ({cType})</div>
-                        <div className="carrier-info">Country Code: {item.data?.country_code || 'Unknown'}</div>
+                      <div key={index} className="history-item">
+                        <div className="history-content" onClick={() => { setResultsData(item.data); setIsResultsOpen(true); setIsHistoryOpen(false); }}>
+                          <div className="timestamp">{new Date(item.timestamp).toLocaleString()}</div>
+                          <div className="phone-number">{formatPhoneNumber(item.phoneNumber)}</div>
+                          <div className="carrier-info">{cName} ({cType})</div>
+                          <div className="carrier-info">Country Code: {item.data?.country_code || 'Unknown'}</div>
+                        </div>
+                        <div className="history-actions">
+                          <button 
+                            className="btn btn-outline-info btn-sm" 
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              openJsonModal(item.data); 
+                            }}
+                            title="View JSON"
+                          >
+                            <i className="bi bi-code"></i>
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -773,6 +797,31 @@ function App() {
             </div>
           </div>
           <div className="modal-backdrop fade show" style={{zIndex: 1055}}></div>
+        </>,
+        document.body
+      )}
+
+      {isJsonModalOpen && jsonData && createPortal(
+        <>
+          <div className="modal fade show" style={{display: 'block', zIndex: 1070}} tabIndex="-1" role="dialog" aria-modal="true">
+            <div className="modal-dialog modal-xl">
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h5 className="modal-title">JSON Response Data</h5>
+                  <button type="button" className="btn-close" aria-label="Close" onClick={() => setIsJsonModalOpen(false)}></button>
+                </div>
+                <div className="modal-body">
+                  <pre className="bg-light p-3 rounded" style={{maxHeight: '70vh', overflow: 'auto', fontSize: '0.875rem'}}>
+                    {JSON.stringify(jsonData, null, 2)}
+                  </pre>
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-primary" onClick={() => setIsJsonModalOpen(false)}>Close</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show" style={{zIndex: 1065}}></div>
         </>,
         document.body
       )}

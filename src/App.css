@@ -186,13 +186,25 @@ body, html {
     border-radius: 0.25rem;
     padding: 1rem;
     margin-bottom: 1rem;
-    cursor: pointer;
     transition: all 0.2s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .history-item:hover {
     background-color: #f8f9fa;
     border-color: #007bff;
+}
+
+.history-content {
+    flex: 1;
+    cursor: pointer;
+}
+
+.history-actions {
+    margin-left: 1rem;
+    flex-shrink: 0;
 }
 
 .history-item .phone-number {
