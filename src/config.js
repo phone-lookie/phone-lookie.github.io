@@ -23,8 +23,9 @@ Object.defineProperties(config, {
       
       // Fall back to environment variable (build-time injection from .env file)
       const envValue = process.env.REACT_APP_TWILIO_ACCOUNT_SID || '';
-      if (envValue) {
-        // Auto-populate localStorage with .env value if it exists
+      if (envValue && envValue !== 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx') {
+        // Auto-populate localStorage with .env value if it exists and is not a placeholder
+        console.log('📥 Importing Twilio Account SID from .env file');
         window.localStorage.setItem(STORAGE_KEYS.TWILIO_ACCOUNT_SID, envValue);
         return envValue;
       }
@@ -38,7 +39,8 @@ Object.defineProperties(config, {
       if (stored) return stored;
       
       const envValue = process.env.REACT_APP_TWILIO_AUTH_TOKEN || '';
-      if (envValue) {
+      if (envValue && envValue !== 'your_twilio_auth_token_here') {
+        console.log('📥 Importing Twilio Auth Token from .env file');
         window.localStorage.setItem(STORAGE_KEYS.TWILIO_AUTH_TOKEN, envValue);
         return envValue;
       }
@@ -52,7 +54,8 @@ Object.defineProperties(config, {
       if (stored) return stored;
       
       const envValue = process.env.REACT_APP_TELNYX_API_KEY || '';
-      if (envValue) {
+      if (envValue && envValue !== 'your_telnyx_api_key_here') {
+        console.log('📥 Importing Telnyx API Key from .env file');
         window.localStorage.setItem(STORAGE_KEYS.TELNYX_API_KEY, envValue);
         return envValue;
       }
@@ -87,6 +90,36 @@ export function setTelnyxCredentials(apiKey) {
 export function clearTelnyxCredentials() {
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(STORAGE_KEYS.TELNYX_API_KEY);
+}
+
+export function importEnvCredentials() {
+  if (typeof window === 'undefined') return;
+  
+  // Import Twilio credentials if not in localStorage
+  if (!window.localStorage.getItem(STORAGE_KEYS.TWILIO_ACCOUNT_SID)) {
+    const sid = process.env.REACT_APP_TWILIO_ACCOUNT_SID || '';
+    if (sid && sid !== 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx') {
+      console.log('📥 Importing Twilio Account SID from .env file');
+      window.localStorage.setItem(STORAGE_KEYS.TWILIO_ACCOUNT_SID, sid);
+    }
+  }
+  
+  if (!window.localStorage.getItem(STORAGE_KEYS.TWILIO_AUTH_TOKEN)) {
+    const token = process.env.REACT_APP_TWILIO_AUTH_TOKEN || '';
+    if (token && token !== 'your_twilio_auth_token_here') {
+      console.log('📥 Importing Twilio Auth Token from .env file');
+      window.localStorage.setItem(STORAGE_KEYS.TWILIO_AUTH_TOKEN, token);
+    }
+  }
+  
+  // Import Telnyx credentials if not in localStorage
+  if (!window.localStorage.getItem(STORAGE_KEYS.TELNYX_API_KEY)) {
+    const key = process.env.REACT_APP_TELNYX_API_KEY || '';
+    if (key && key !== 'your_telnyx_api_key_here') {
+      console.log('📥 Importing Telnyx API Key from .env file');
+      window.localStorage.setItem(STORAGE_KEYS.TELNYX_API_KEY, key);
+    }
+  }
 }
 
 export default config;

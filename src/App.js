@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import './App.css';
 import { convertAlphaToDigits, normalizeToE164Candidate, formatInternationalFlexible, normalizeForLookup } from './phoneUtils';
-import config, { setTwilioCredentials, clearTwilioCredentials, setTelnyxCredentials, clearTelnyxCredentials } from './config';
+import config, { setTwilioCredentials, clearTwilioCredentials, setTelnyxCredentials, clearTelnyxCredentials, importEnvCredentials } from './config';
 import VERSION_INFO from './version';
 
 function App() {
@@ -151,11 +151,33 @@ function App() {
     // Initialize settings fields from localStorage-backed config
     // Will automatically fall back to .env values if localStorage is empty
     try {
-      setAccountSid(config.TWILIO_ACCOUNT_SID || '');
-      setAuthToken(config.TWILIO_AUTH_TOKEN || '');
-      setTelnyxApiKey(config.TELNYX_API_KEY || '');
+      // First, try to import from .env if localStorage is empty
+      importEnvCredentials();
+      
+      // Now read the values (from localStorage or .env)
+      const twilioSid = config.TWILIO_ACCOUNT_SID || '';
+      const twilioToken = config.TWILIO_AUTH_TOKEN || '';
+      const telnyxKey = config.TELNYX_API_KEY || '';
+      
+      setAccountSid(twilioSid);
+      setAuthToken(twilioToken);
+      setTelnyxApiKey(telnyxKey);
+      
+      // Check if at least one service is configured after potential .env import
+      const hasCredentials = checkCredentials();
+      if (!hasCredentials) {
+        console.warn('⚠️  No API credentials configured. Please configure at least one service in Settings.');
+        console.log('Available services: Twilio or Telnyx');
+        console.log('You can:');
+        console.log('  1. Create a .env file with your credentials');
+        console.log('  2. Click the gear icon to configure in Settings');
+      } else {
+        // Log which services are configured
+        const services = getAvailableServices();
+        console.log('✅ API services configured:', services.join(', '));
+      }
     } catch (e) {
-      // no-op
+      console.error('Error initializing credentials:', e);
     }
 
     // Global keyboard event handler
@@ -449,7 +471,10 @@ function App() {
   };
 
   const handleOpenSettings = () => {
-    // Load from localStorage first, fall back to .env if empty
+    // Try to import from .env before opening settings
+    importEnvCredentials();
+    
+    // Load from localStorage (which may have been populated by importEnvCredentials)
     setAccountSid(config.TWILIO_ACCOUNT_SID || '');
     setAuthToken(config.TWILIO_AUTH_TOKEN || '');
     setTelnyxApiKey(config.TELNYX_API_KEY || '');
