@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import './App.css';
 import { convertAlphaToDigits, normalizeToE164Candidate, formatInternationalFlexible, normalizeForLookup } from './phoneUtils';
-import config, { setTwilioCredentials, clearTwilioCredentials } from './config';
+import config, { setTwilioCredentials, clearTwilioCredentials, setTelnyxCredentials, clearTelnyxCredentials } from './config';
 import VERSION_INFO from './version';
 
 function App() {
@@ -14,6 +14,7 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [accountSid, setAccountSid] = useState('');
   const [authToken, setAuthToken] = useState('');
+  const [telnyxApiKey, setTelnyxApiKey] = useState('');
   const [credentialsVersion, setCredentialsVersion] = useState(0);
   const [isResultsOpen, setIsResultsOpen] = useState(false);
   const [resultsData, setResultsData] = useState(null);
@@ -22,6 +23,7 @@ function App() {
   const [jsonData, setJsonData] = useState(null);
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [waitingWorker, setWaitingWorker] = useState(null);
+  const [historySearchQuery, setHistorySearchQuery] = useState('');
   
   const resultsModalRef = useRef(null);
   const historyModalRef = useRef(null);
@@ -147,9 +149,11 @@ function App() {
     };
 
     // Initialize settings fields from localStorage-backed config
+    // Will automatically fall back to .env values if localStorage is empty
     try {
       setAccountSid(config.TWILIO_ACCOUNT_SID || '');
       setAuthToken(config.TWILIO_AUTH_TOKEN || '');
+      setTelnyxApiKey(config.TELNYX_API_KEY || '');
     } catch (e) {
       // no-op
     }
@@ -269,12 +273,23 @@ function App() {
     };
   }, [updateAvailable]);
 
-  // Check credentials
+  // Check credentials - require either Twilio or Telnyx
   const checkCredentials = () => {
-    if (!config.TWILIO_ACCOUNT_SID || !config.TWILIO_AUTH_TOKEN) {
-      return false;
+    const hasTwilio = config.TWILIO_ACCOUNT_SID && config.TWILIO_AUTH_TOKEN;
+    const hasTelnyx = config.TELNYX_API_KEY;
+    
+    return hasTwilio || hasTelnyx;
+  };
+
+  const getAvailableServices = () => {
+    const services = [];
+    if (config.TWILIO_ACCOUNT_SID && config.TWILIO_AUTH_TOKEN) {
+      services.push('twilio');
     }
-    return true;
+    if (config.TELNYX_API_KEY) {
+      services.push('telnyx');
+    }
+    return services;
   };
 
   // Phone number formatting
@@ -358,7 +373,7 @@ function App() {
     setIsViewingHistory(false);
 
     if (!checkCredentials()) {
-      showError('Twilio credentials are not configured. Please contact the administrator.');
+      showError('Please configure at least one API service (Twilio or Telnyx) in Settings.');
       return;
     }
 
@@ -373,15 +388,47 @@ function App() {
     }
 
     try {
-      // API call would go here
-      const data = await fetchLookupData(processedNumber);
-      try { 
-        console.log('Lookup payload:', data); 
-        console.log('Carrier data:', data.carrier);
-        console.log('Line type data:', data.line_type_intelligence);
-      } catch (e) {}
-      saveToHistory(processedNumber, data);
-      setResultsData(data);
+      const availableServices = getAvailableServices();
+      const results = {
+        services: availableServices,
+        data: {}
+      };
+
+      // Try to fetch from all available services in parallel
+      const promises = [];
+      
+      if (availableServices.includes('twilio')) {
+        promises.push(
+          fetchTwilioLookupData(processedNumber)
+            .then(data => {
+              results.data.twilio = data;
+              console.log('Twilio data:', data);
+            })
+            .catch(err => {
+              console.error('Twilio error:', err);
+              results.data.twilio = { error: err.message };
+            })
+        );
+      }
+
+      if (availableServices.includes('telnyx')) {
+        promises.push(
+          fetchTelnyxLookupData(processedNumber)
+            .then(data => {
+              results.data.telnyx = data;
+              console.log('Telnyx data:', data);
+            })
+            .catch(err => {
+              console.error('Telnyx error:', err);
+              results.data.telnyx = { error: err.message };
+            })
+        );
+      }
+
+      await Promise.all(promises);
+      
+      saveToHistory(processedNumber, results);
+      setResultsData(results);
       setIsResultsOpen(true);
     } catch (error) {
       console.error('Lookup error:', error);
@@ -402,25 +449,30 @@ function App() {
   };
 
   const handleOpenSettings = () => {
+    // Load from localStorage first, fall back to .env if empty
     setAccountSid(config.TWILIO_ACCOUNT_SID || '');
     setAuthToken(config.TWILIO_AUTH_TOKEN || '');
+    setTelnyxApiKey(config.TELNYX_API_KEY || '');
     setIsSettingsOpen(true);
   };
 
   const handleSaveSettings = () => {
     setTwilioCredentials(accountSid.trim(), authToken.trim());
+    setTelnyxCredentials(telnyxApiKey.trim());
     setCredentialsVersion(v => v + 1);
     setIsSettingsOpen(false);
   };
 
   const handleClearSettings = () => {
     clearTwilioCredentials();
+    clearTelnyxCredentials();
     setAccountSid('');
     setAuthToken('');
+    setTelnyxApiKey('');
     setCredentialsVersion(v => v + 1);
   };
 
-  const fetchLookupData = async (phoneNumber) => {
+  const fetchTwilioLookupData = async (phoneNumber) => {
     const url = new URL(`https://lookups.twilio.com/v2/PhoneNumbers/${phoneNumber}`);
     url.searchParams.set('Fields', 'caller_name,line_type_intelligence,sim_swap,identity_match');
 
@@ -432,6 +484,23 @@ function App() {
 
     if (!response.ok) {
       throw new Error(response.status.toString());
+    }
+
+    return response.json();
+  };
+
+  const fetchTelnyxLookupData = async (phoneNumber) => {
+    const url = `https://api.telnyx.com/v2/number_lookup/${encodeURIComponent(phoneNumber)}`;
+
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${config.TELNYX_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Telnyx error: ${response.status}`);
     }
 
     return response.json();
@@ -501,6 +570,26 @@ function App() {
 
   const dismissUpdate = () => {
     setUpdateAvailable(false);
+  };
+
+  // Filter history based on search query
+  const filterHistory = (item) => {
+    if (!historySearchQuery) return true;
+    
+    const query = historySearchQuery.toLowerCase().trim();
+    
+    // Search in phone number
+    if (item.phoneNumber.toLowerCase().includes(query)) return true;
+    
+    // Search in caller name
+    const callerName = item.data?.caller_name?.caller_name?.toLowerCase() || '';
+    if (callerName.includes(query)) return true;
+    
+    // Search in carrier name
+    const carrier = (item.data?.carrier?.name || item.data?.line_type_intelligence?.carrier_name || '').toLowerCase();
+    if (carrier.includes(query)) return true;
+    
+    return false;
   };
 
   const handleInstallClick = async () => {
@@ -662,7 +751,7 @@ function App() {
                   onClick={performLookup}
                   disabled={!checkCredentials()}
                 >
-                  {checkCredentials() ? 'Lookup Number' : 'Missing Twilio Credentials'}
+                  {checkCredentials() ? 'Lookup Number' : 'Configure API Service'}
                 </button>
               </div>
             </div>
@@ -742,6 +831,22 @@ function App() {
                       autoComplete="off"
                     />
                   </div>
+                  
+                  <hr className="my-4" />
+                  <h6 className="mb-3">Telnyx Configuration</h6>
+                  <div className="mb-3">
+                    <label htmlFor="telnyxApiKey" className="form-label">Telnyx API Key</label>
+                    <input
+                      id="telnyxApiKey"
+                      type="password"
+                      className="form-control"
+                      value={telnyxApiKey}
+                      onChange={e => setTelnyxApiKey(e.target.value)}
+                      placeholder="Your Telnyx API Key"
+                      autoComplete="off"
+                    />
+                  </div>
+                  
                   <div className="alert alert-warning" role="alert">
                     Your credentials are stored locally on this device via localStorage.
                   </div>
@@ -786,12 +891,66 @@ function App() {
                   <button type="button" className="btn-close" aria-label="Close" onClick={() => setIsResultsOpen(false)}></button>
                 </div>
                 <div className="modal-body">
-                  <div className="result-section mb-3">
-                    <h6 className="text-primary mb-2">Basic Information</h6>
-                    <div className="result-item"><strong>Phone Number:</strong> {formatPhoneNumber(resultsData.phone_number)}</div>
-                    <div className="result-item"><strong>Country Code:</strong> {resultsData.country_code}</div>
-                    <div className="result-item"><strong>National Format:</strong> {resultsData.national_format}</div>
-                  </div>
+                  {resultsData.services && (
+                    <div className="mb-3">
+                      <span className="badge bg-primary me-2">
+                        {resultsData.services.includes('twilio') && 'Twilio'}
+                      </span>
+                      {resultsData.services.includes('telnyx') && (
+                        <span className="badge bg-success">Telnyx</span>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Multi-service results */}
+                  {resultsData.services ? (
+                    <>
+                      {resultsData.data.twilio && !resultsData.data.twilio.error && (
+                        <div className="result-section mb-3">
+                          <h6 className="text-primary mb-2">Twilio Results</h6>
+                          {resultsData.data.twilio.phone_number && (
+                            <div className="result-item"><strong>Phone Number:</strong> {formatPhoneNumber(resultsData.data.twilio.phone_number)}</div>
+                          )}
+                          {resultsData.data.twilio.country_code && (
+                            <div className="result-item"><strong>Country Code:</strong> {resultsData.data.twilio.country_code}</div>
+                          )}
+                          {resultsData.data.twilio.national_format && (
+                            <div className="result-item"><strong>National Format:</strong> {resultsData.data.twilio.national_format}</div>
+                          )}
+                          <div className="result-item"><strong>Carrier:</strong> {(resultsData.data.twilio.carrier?.name) || (resultsData.data.twilio.line_type_intelligence?.carrier_name) || 'Not available'}</div>
+                          <div className="result-item"><strong>Type:</strong> {(resultsData.data.twilio.carrier?.type) || (resultsData.data.twilio.line_type_intelligence?.type) || 'Not available'}</div>
+                        </div>
+                      )}
+                      
+                      {resultsData.data.telnyx && !resultsData.data.telnyx.error && (
+                        <div className="result-section mb-3">
+                          <h6 className="text-success mb-2">Telnyx Results</h6>
+                          {resultsData.data.telnyx.phone_number && (
+                            <div className="result-item"><strong>Phone Number:</strong> {formatPhoneNumber(resultsData.data.telnyx.phone_number)}</div>
+                          )}
+                          {resultsData.data.telnyx.carrier?.name && (
+                            <div className="result-item"><strong>Carrier:</strong> {resultsData.data.telnyx.carrier.name}</div>
+                          )}
+                          {resultsData.data.telnyx.line_type && (
+                            <div className="result-item"><strong>Type:</strong> {resultsData.data.telnyx.line_type}</div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {/* Legacy single-service results */}
+                      <div className="result-section mb-3">
+                        <h6 className="text-primary mb-2">Basic Information</h6>
+                        <div className="result-item"><strong>Phone Number:</strong> {formatPhoneNumber(resultsData.phone_number)}</div>
+                        <div className="result-item"><strong>Country Code:</strong> {resultsData.country_code}</div>
+                        <div className="result-item"><strong>National Format:</strong> {resultsData.national_format}</div>
+                      </div>
+                    </>
+                  )}
+                  
+                  {!resultsData.services && (
+                  <>
                   <div className="result-section mb-3">
                     <h6 className="text-primary mb-2">Carrier Information</h6>
                     <div className="result-item"><strong>Carrier:</strong> {(resultsData.carrier?.name) || (resultsData.line_type_intelligence?.carrier_name) || 'Not available'}</div>
@@ -830,6 +989,8 @@ function App() {
                       <div className="result-item"><strong>Score:</strong> {resultsData.identity_match?.summary_score ?? 'Unknown'}</div>
                     </div>
                   )}
+                  </>
+                  )}
                 </div>
                 <div className="modal-footer">
                   <button type="button" className="btn btn-outline-info me-auto" onClick={() => openJsonModal(resultsData)}>
@@ -852,19 +1013,36 @@ function App() {
               <div className="modal-content">
                 <div className="modal-header">
                   <h5 className="modal-title">Lookup History</h5>
-                  <button type="button" className="btn-close" aria-label="Close" onClick={() => setIsHistoryOpen(false)}></button>
+                  <button type="button" className="btn-close" aria-label="Close" onClick={() => { setIsHistoryOpen(false); setHistorySearchQuery(''); }}></button>
                 </div>
                 <div className="modal-body history-list" id="historyContent">
-                  {lookupHistory.length === 0 && (
-                    <div className="text-center text-muted">No lookup history found</div>
+                  {/* Search Box */}
+                  <div className="mb-3">
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Search by phone number, caller name, or carrier (e.g., AT&T, T-Mobile)..."
+                      value={historySearchQuery}
+                      onChange={(e) => setHistorySearchQuery(e.target.value)}
+                    />
+                  </div>
+                  
+                  {lookupHistory.filter(filterHistory).length === 0 && (
+                    <div className="text-center text-muted">
+                      {lookupHistory.length === 0 ? 'No lookup history found' : 'No results match your search'}
+                    </div>
                   )}
-                  {lookupHistory.map((item, index) => {
+                  {lookupHistory.filter(filterHistory).map((item, index) => {
                     const cName = item.data?.carrier?.name || item.data?.line_type_intelligence?.carrier_name || 'Unknown';
                     const cType = item.data?.carrier?.type || item.data?.line_type_intelligence?.type || 'Unknown';
+                    const callerName = item.data?.caller_name?.caller_name || null;
                     return (
                       <div key={index} className="history-item">
                         <div className="history-content" onClick={() => { setResultsData(item.data); setIsResultsOpen(true); setIsHistoryOpen(false); }}>
                           <div className="timestamp">{new Date(item.timestamp).toLocaleString()}</div>
+                          {callerName && (
+                            <div className="caller-name text-primary" style={{fontWeight: 'bold', fontSize: '1.1em'}}>{callerName}</div>
+                          )}
                           <div className="phone-number">{formatPhoneNumber(item.phoneNumber)}</div>
                           <div className="carrier-info">{cName} ({cType})</div>
                           <div className="carrier-info">Country Code: {item.data?.country_code || 'Unknown'}</div>
@@ -890,7 +1068,7 @@ function App() {
                   <button type="button" className="btn btn-outline-success me-2" onClick={exportHistoryToCSV} disabled={lookupHistory.length === 0}>
                     <i className="bi bi-download"></i> Export CSV
                   </button>
-                  <button type="button" className="btn btn-primary" onClick={() => setIsHistoryOpen(false)}>Close</button>
+                  <button type="button" className="btn btn-primary" onClick={() => { setIsHistoryOpen(false); setHistorySearchQuery(''); }}>Close</button>
                 </div>
               </div>
             </div>

@@ -11,7 +11,8 @@ A Progressive Web App for phone number lookup using Twilio API, built with React
 - **Virtual Keypad** interface with keyboard support
 - **Lookup History** with localStorage persistence
 - **CSV Export** of lookup history
-- **Settings Management** - store Twilio credentials locally
+- **Multi-Service Support** - Use Twilio, Telnyx, or both for phone lookups
+- **Settings Management** - store API credentials locally
 - **Service Worker** for offline functionality
 - **Auto-formatting** of phone numbers as you type
 - **Mobile-Optimized** - prevents pinch zoom and overscroll bounce
@@ -23,7 +24,9 @@ A Progressive Web App for phone number lookup using Twilio API, built with React
 
 - Node.js (version 14 or higher)
 - npm or yarn
-- Twilio account with Account SID and Auth Token
+- **At least one** of the following:
+  - Twilio account with Account SID and Auth Token
+  - Telnyx account with API Key
 
 ### Installation
 
@@ -47,12 +50,34 @@ The app will open at `http://localhost:3000`.
 
 ### Configuration
 
-1. Click the gear icon (⚙️) in the top-right corner
-2. Enter your Twilio Account SID (starts with "AC...")
-3. Enter your Twilio Auth Token
-4. Click Save
+#### Option 1: Using .env File (Recommended for Development)
 
-Credentials are stored locally in your browser's localStorage.
+1. Create a `.env` file in the project root:
+```bash
+# Copy and fill in your credentials
+REACT_APP_TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+REACT_APP_TWILIO_AUTH_TOKEN=your_twilio_auth_token_here
+REACT_APP_TELNYX_API_KEY=your_telnyx_api_key_here
+```
+
+2. Start the app - credentials will be automatically imported into localStorage
+
+**Note**: `.env` files are git-ignored for security. Never commit credentials to version control.
+
+#### Option 2: Using the Settings Modal
+
+1. Click the gear icon (⚙️) in the top-right corner
+2. Configure **at least one** API service:
+   - **Twilio**: Enter Account SID (starts with "AC...") and Auth Token
+   - **Telnyx**: Enter API Key
+3. Click Save
+
+**Note**: You can configure both services to get combined results. Credentials are stored locally in your browser's localStorage and will override `.env` values.
+
+#### Getting API Keys
+
+- **Twilio**: Sign up at [twilio.com](https://www.twilio.com) and get credentials from the console
+- **Telnyx**: Sign up at [telnyx.com](https://telnyx.com) and get API key from Mission Control Portal
 
 ### Building for Production
 
@@ -116,12 +141,23 @@ The app supports various phone number formats:
 
 ## API Features
 
-- **Twilio Lookup API** integration
+### Multi-Service Support
+
+The app supports **Twilio**, **Telnyx**, or **both** simultaneously:
+
+- **Single Service**: Use just Twilio or just Telnyx
+- **Dual Service**: Configure both to get combined results
+- **Automatic Fallback**: Results from available services are merged
+- **Parallel Requests**: Both APIs are called simultaneously for speed
+
+### Available Data
+
 - **Carrier Information** (when available)
 - **Caller Information** (when available)
 - **Line Type Intelligence**
-- **SIM Swap Detection**
+- **SIM Swap Detection** (Twilio)
 - **Validation Status**
+- **Country and National Format**
 
 ## PWA Features
 
