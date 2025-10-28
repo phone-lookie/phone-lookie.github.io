@@ -17,6 +17,8 @@ A Progressive Web App for phone number lookup using Twilio API, built with React
 - **Auto-formatting** of phone numbers as you type
 - **Mobile-Optimized** - prevents pinch zoom and overscroll bounce
 - **Global Keyboard Support** - type numbers even when input isn't focused
+- **Enhanced Input Handling** - delete/backspace with selected text clears the entire field
+- **Already Searched Indicator** - tooltip shows if a number has been looked up before
 
 ## Getting Started
 

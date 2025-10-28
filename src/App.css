@@ -305,6 +305,23 @@ body, html {
     }
 }
 
+/* Fade out animation for tooltips */
+.animate-fade-out {
+    animation: fadeOut 3s ease-out forwards;
+}
+
+@keyframes fadeOut {
+    0% {
+        opacity: 1;
+    }
+    70% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
 /* Adjust main content when update banner is visible */
 body.update-available {
     padding-top: 60px;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import './App.css';
 import { convertAlphaToDigits, normalizeToE164Candidate, formatInternationalFlexible, normalizeForLookup } from './phoneUtils';
@@ -15,6 +15,8 @@ function App() {
   const [accountSid, setAccountSid] = useState('');
   const [authToken, setAuthToken] = useState('');
   const [telnyxApiKey, setTelnyxApiKey] = useState('');
+  const [defaultService, setDefaultService] = useState('both');
+  const [overrideService, setOverrideService] = useState('');
   const [credentialsVersion, setCredentialsVersion] = useState(0);
   const [isResultsOpen, setIsResultsOpen] = useState(false);
   const [resultsData, setResultsData] = useState(null);
@@ -24,6 +26,9 @@ function App() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [waitingWorker, setWaitingWorker] = useState(null);
   const [historySearchQuery, setHistorySearchQuery] = useState('');
+  const [defaultServiceSelection, setDefaultServiceSelection] = useState('both');
+  const [lookupServiceOverride, setLookupServiceOverride] = useState(null);
+  const [showAlreadySearched, setShowAlreadySearched] = useState(false);
   
   const resultsModalRef = useRef(null);
   const historyModalRef = useRef(null);
@@ -48,7 +53,6 @@ function App() {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js')
         .then(registration => {
-          console.log('ServiceWorker registration successful');
           
           // Check for updates immediately
           registration.update();
@@ -68,7 +72,6 @@ function App() {
           });
         })
         .catch(err => {
-          console.log('ServiceWorker registration failed: ', err);
         });
 
       // Listen for messages from service worker
@@ -88,6 +91,12 @@ function App() {
     const savedHistory = localStorage.getItem('lookupHistory');
     if (savedHistory) {
       setLookupHistory(JSON.parse(savedHistory));
+    }
+
+    // Load default service selection from localStorage
+    const savedServiceSelection = localStorage.getItem('defaultServiceSelection');
+    if (savedServiceSelection) {
+      setDefaultServiceSelection(savedServiceSelection);
     }
 
     // Prevent mobile zoom and touch gestures
@@ -158,23 +167,23 @@ function App() {
       const twilioSid = config.TWILIO_ACCOUNT_SID || '';
       const twilioToken = config.TWILIO_AUTH_TOKEN || '';
       const telnyxKey = config.TELNYX_API_KEY || '';
+      const savedDefaultService = localStorage.getItem('defaultService') || 'both';
       
       setAccountSid(twilioSid);
       setAuthToken(twilioToken);
       setTelnyxApiKey(telnyxKey);
+      setDefaultService(savedDefaultService);
+      
+      // Set initial override to match default service setting
+      setOverrideService('');
       
       // Check if at least one service is configured after potential .env import
       const hasCredentials = checkCredentials();
       if (!hasCredentials) {
         console.warn('⚠️  No API credentials configured. Please configure at least one service in Settings.');
-        console.log('Available services: Twilio or Telnyx');
-        console.log('You can:');
-        console.log('  1. Create a .env file with your credentials');
-        console.log('  2. Click the gear icon to configure in Settings');
       } else {
         // Log which services are configured
         const services = getAvailableServices();
-        console.log('✅ API services configured:', services.join(', '));
       }
     } catch (e) {
       console.error('Error initializing credentials:', e);
@@ -190,30 +199,26 @@ function App() {
       // Handle Enter key for lookup
       if (e.key === 'Enter') {
         e.preventDefault();
-        performLookup();
+        // Lookup will be triggered via button click or input handlers
+        document.getElementById('lookupBtn')?.click();
         return;
       }
 
-      // Handle Backspace/Delete for removing last digit
+      // Handle Backspace/Delete for removing last digit (only when not in input)
       if (e.key === 'Backspace' || e.key === 'Delete') {
         e.preventDefault();
         if (phoneNumber.length > 0) {
-          // Extract digits from current phone number
           const currentDigits = phoneNumber.replace(/\D/g, '');
           if (currentDigits.length > 0) {
-            // Remove last digit
             const newDigits = currentDigits.slice(0, -1);
             if (newDigits.length === 0) {
-              // No more digits, clear the input
               setPhoneNumber('');
             } else {
-              // Format the remaining digits
               const candidate = normalizeToE164Candidate(newDigits);
               const formatted = candidate ? formatInternationalFlexible(candidate) : newDigits;
               setPhoneNumber(formatted);
             }
           } else {
-            // No digits found, clear the input
             setPhoneNumber('');
           }
         }
@@ -295,6 +300,22 @@ function App() {
     };
   }, [updateAvailable]);
 
+  // Handle "already searched" tooltip - show when number exists in history
+  useEffect(() => {
+    if (phoneNumber && lookupHistory.some(item => item.phoneNumber === normalizeForLookup(phoneNumber))) {
+      setShowAlreadySearched(true);
+      // Auto-dismiss after 3 seconds
+      const timer = setTimeout(() => {
+        setShowAlreadySearched(false);
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    } else {
+      setShowAlreadySearched(false);
+    }
+  }, [phoneNumber, lookupHistory]);
+
+
   // Check credentials - require either Twilio or Telnyx
   const checkCredentials = () => {
     const hasTwilio = config.TWILIO_ACCOUNT_SID && config.TWILIO_AUTH_TOKEN;
@@ -365,6 +386,20 @@ function App() {
     setPhoneNumber(formatted);
   };
 
+  const handlePhoneKeyDown = (e) => {
+    // Handle delete when text is selected - clear everything
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      const input = e.target;
+      const selectedText = input.value.substring(input.selectionStart, input.selectionEnd);
+      
+      if (selectedText.length > 0) {
+        e.preventDefault();
+        setPhoneNumber('');
+        return;
+      }
+    }
+  };
+
   const handlePhoneBlur = () => {
     if (phoneNumber) {
       setPhoneNumber(formatPhoneNumberInput(phoneNumber));
@@ -389,7 +424,7 @@ function App() {
     console.error(message);
   };
 
-  const performLookup = async () => {
+  const performLookup = useCallback(async () => {
     const processedNumber = normalizeForLookup(phoneNumber);
 
     setIsViewingHistory(false);
@@ -411,20 +446,36 @@ function App() {
 
     try {
       const availableServices = getAvailableServices();
+      
+      // Determine which services to actually query
+      let servicesToQuery = availableServices;
+      
+      // If multiple services available, respect the selection
+      if (availableServices.length > 1) {
+        // Use override if set, otherwise use default
+        const selection = overrideService || defaultServiceSelection;
+        
+        if (selection === 'twilio') {
+          servicesToQuery = availableServices.includes('twilio') ? ['twilio'] : availableServices;
+        } else if (selection === 'telnyx') {
+          servicesToQuery = availableServices.includes('telnyx') ? ['telnyx'] : availableServices;
+        }
+        // 'both' or empty uses all available services
+      }
+      
       const results = {
-        services: availableServices,
+        services: servicesToQuery,
         data: {}
       };
 
-      // Try to fetch from all available services in parallel
+      // Try to fetch from selected services in parallel
       const promises = [];
       
-      if (availableServices.includes('twilio')) {
+      if (servicesToQuery.includes('twilio')) {
         promises.push(
           fetchTwilioLookupData(processedNumber)
             .then(data => {
               results.data.twilio = data;
-              console.log('Twilio data:', data);
             })
             .catch(err => {
               console.error('Twilio error:', err);
@@ -433,12 +484,11 @@ function App() {
         );
       }
 
-      if (availableServices.includes('telnyx')) {
+      if (servicesToQuery.includes('telnyx')) {
         promises.push(
           fetchTelnyxLookupData(processedNumber)
             .then(data => {
               results.data.telnyx = data;
-              console.log('Telnyx data:', data);
             })
             .catch(err => {
               console.error('Telnyx error:', err);
@@ -468,7 +518,7 @@ function App() {
       
       showError(errorMessage);
     }
-  };
+  }, [phoneNumber, overrideService, defaultServiceSelection]);
 
   const handleOpenSettings = () => {
     // Try to import from .env before opening settings
@@ -484,6 +534,8 @@ function App() {
   const handleSaveSettings = () => {
     setTwilioCredentials(accountSid.trim(), authToken.trim());
     setTelnyxCredentials(telnyxApiKey.trim());
+    // Save default service selection
+    localStorage.setItem('defaultServiceSelection', defaultServiceSelection);
     setCredentialsVersion(v => v + 1);
     setIsSettingsOpen(false);
   };
@@ -532,15 +584,57 @@ function App() {
   };
 
   const saveToHistory = (phoneNumber, data) => {
-    const newHistoryItem = {
-      phoneNumber,
-      data,
-      timestamp: new Date().toISOString()
-    };
+    // Check if this phone number already exists in history
+    const existingIndex = lookupHistory.findIndex(item => item.phoneNumber === phoneNumber);
+    
+    if (existingIndex !== -1) {
+      // Update existing history item with new service data
+      const existingItem = lookupHistory[existingIndex];
+      const existingServices = existingItem.data?.services || [];
+      const newServices = data.services || [];
+      
+      // Merge services (remove duplicates and sort)
+      const mergedServices = [...new Set([...existingServices, ...newServices])].sort();
+      
+      // Merge data from both services
+      const mergedData = {
+        ...existingItem.data,
+        ...data,
+        services: mergedServices
+      };
+      
+      // Preserve existing service data and add new service data
+      if (data.data?.twilio && !existingItem.data?.twilio) {
+        mergedData.twilio = data.data.twilio;
+      }
+      if (data.data?.telnyx && !existingItem.data?.telnyx) {
+        mergedData.telnyx = data.data.telnyx;
+      }
+      
+      // Update the existing item
+      const updatedItem = {
+        ...existingItem,
+        data: mergedData,
+        timestamp: new Date().toISOString() // Update timestamp to most recent
+      };
+      
+      const updatedHistory = [...lookupHistory];
+      updatedHistory[existingIndex] = updatedItem;
+      
+      setLookupHistory(updatedHistory);
+      localStorage.setItem('lookupHistory', JSON.stringify(updatedHistory));
+    } else {
+      // New history item
+      const newHistoryItem = {
+        phoneNumber,
+        data,
+        timestamp: new Date().toISOString()
+      };
 
-    const updatedHistory = [newHistoryItem, ...lookupHistory.slice(0, 49)];
-    setLookupHistory(updatedHistory);
-    localStorage.setItem('lookupHistory', JSON.stringify(updatedHistory));
+      const updatedHistory = [newHistoryItem, ...lookupHistory.slice(0, 49)];
+      setLookupHistory(updatedHistory);
+      localStorage.setItem('lookupHistory', JSON.stringify(updatedHistory));
+    }
   };
 
   const clearHistory = () => {
@@ -551,7 +645,7 @@ function App() {
   const exportHistoryToCSV = () => {
     if (lookupHistory.length === 0) return;
     
-    const headers = ['Phone Number', 'Carrier', 'Type', 'Country Code', 'National Format', 'Caller Name', 'Caller Type', 'Timestamp'];
+    const headers = ['Phone Number', 'Carrier', 'Type', 'Country Code', 'National Format', 'Caller Name', 'Caller Type', 'Services', 'Timestamp'];
     const csvContent = [
       headers.join(','),
       ...lookupHistory.map(item => {
@@ -564,7 +658,11 @@ function App() {
         const timestamp = new Date(item.timestamp).toLocaleString();
         const phoneNumber = formatPhoneNumber(item.phoneNumber);
         
-        return [phoneNumber, carrier, type, countryCode, nationalFormat, callerName, callerType, timestamp]
+        // Get services used - support both new (data.services) and legacy formats
+        const servicesUsed = item.data?.services || [];
+        const servicesStr = servicesUsed.length > 0 ? servicesUsed.join(', ') : 'N/A';
+        
+        return [phoneNumber, carrier, type, countryCode, nationalFormat, callerName, callerType, servicesStr, timestamp]
           .map(field => `"${field}"`).join(',');
       })
     ].join('\n');
@@ -597,6 +695,77 @@ function App() {
     setUpdateAvailable(false);
   };
 
+  // Merge results from multiple services into a unified display
+  const mergeResults = (results) => {
+    if (!results.services) {
+      // Legacy single-service results
+      return results;
+    }
+
+    const merged = {
+      phone_number: null,
+      country_code: null,
+      national_format: null,
+      carrier: { name: null, type: null, source: [] },
+      caller_name: null,
+      line_type: null,
+      valid: null,
+      sources: []
+    };
+
+    // Merge Twilio data
+    if (results.data.twilio && !results.data.twilio.error) {
+      const twilio = results.data.twilio;
+      merged.sources.push('Twilio');
+      
+      if (!merged.phone_number && twilio.phone_number) merged.phone_number = twilio.phone_number;
+      if (!merged.country_code && twilio.country_code) merged.country_code = twilio.country_code;
+      if (!merged.national_format && twilio.national_format) merged.national_format = twilio.national_format;
+      
+      if (twilio.carrier?.name || twilio.line_type_intelligence?.carrier_name) {
+        const carrier = twilio.carrier?.name || twilio.line_type_intelligence?.carrier_name;
+        const type = twilio.carrier?.type || twilio.line_type_intelligence?.type;
+        if (!merged.carrier.name) {
+          merged.carrier.name = carrier;
+          merged.carrier.type = type;
+        }
+        merged.carrier.source.push('Twilio');
+      }
+      
+      if (twilio.caller_name?.caller_name) {
+        merged.caller_name = twilio.caller_name;
+      }
+      
+      if (twilio.line_type_intelligence?.type) {
+        merged.line_type = twilio.line_type_intelligence.type;
+      }
+      
+      if (twilio.valid !== undefined) {
+        merged.valid = twilio.valid;
+      }
+    }
+
+    // Merge Telnyx data
+    if (results.data.telnyx && !results.data.telnyx.error) {
+      const telnyx = results.data.telnyx;
+      merged.sources.push('Telnyx');
+      
+      if (!merged.phone_number && telnyx.phone_number) merged.phone_number = telnyx.phone_number;
+      if (!merged.country_code && telnyx.country_code) merged.country_code = telnyx.country_code;
+      if (!merged.national_format && telnyx.national_format) merged.national_format = telnyx.national_format;
+      
+      if (telnyx.carrier?.name) {
+        if (!merged.carrier.name) {
+          merged.carrier.name = telnyx.carrier.name;
+          merged.carrier.type = telnyx.carrier.type;
+        }
+        merged.carrier.source.push('Telnyx');
+      }
+    }
+
+    return merged;
+  };
+
   // Filter history based on search query
   const filterHistory = (item) => {
     if (!historySearchQuery) return true;
@@ -622,7 +791,6 @@ function App() {
 
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    console.log(`User response to the install prompt: ${outcome}`);
     setDeferredPrompt(null);
     setShowInstallButton(false);
   };
@@ -717,17 +885,18 @@ function App() {
                   <div className="input-group">
                     <input 
                       type="tel" 
-                      className="form-control form-control-lg text-center" 
+                      className="form-control form-control-lg text-center"
                       id="phoneInput"
                       ref={phoneInputRef}
                       value={phoneNumber}
                       onChange={handlePhoneInput}
+                      onKeyDown={handlePhoneKeyDown}
                       onPaste={handlePhonePaste}
                       onBlur={handlePhoneBlur}
-                      onKeyDown={handleKeyDown}
                       placeholder="+[country code] (XXX) XXX-XXXX"
                       maxLength="25"
                       pattern=""
+                      title={showAlreadySearched ? "This number has been looked up before" : ""}
                     />
                     <button 
                       className="btn btn-primary" 
@@ -778,6 +947,37 @@ function App() {
                 >
                   {checkCredentials() ? 'Lookup Number' : 'Configure API Service'}
                 </button>
+
+                {/* Service Override Selector - only show if both services are available */}
+                {(() => {
+                  const availableServices = getAvailableServices();
+                  if (availableServices.length > 1) {
+                    const hasTwilio = availableServices.includes('twilio');
+                    const hasTelnyx = availableServices.includes('telnyx');
+                    
+                    return (
+                      <div className="mb-3" style={{width: '235px'}}>
+                        <select
+                          id="serviceOverride"
+                          className="form-select"
+                          value={overrideService || defaultServiceSelection}
+                          onChange={e => setOverrideService(e.target.value === defaultServiceSelection ? '' : e.target.value)}
+                        >
+                          {availableServices.length === 2 && (
+                            <option value="both">Both Services</option>
+                          )}
+                          {hasTwilio && (
+                            <option value="twilio">Twilio Only</option>
+                          )}
+                          {hasTelnyx && (
+                            <option value="telnyx">Telnyx Only</option>
+                          )}
+                        </select>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             </div>
           </div>
@@ -876,6 +1076,39 @@ function App() {
                     Your credentials are stored locally on this device via localStorage.
                   </div>
                   
+                  {/* Default Service Selection - show if either service is available */}
+                  {(() => {
+                    const hasTwilio = config.TWILIO_ACCOUNT_SID && config.TWILIO_AUTH_TOKEN;
+                    const hasTelnyx = config.TELNYX_API_KEY;
+                    const hasBoth = hasTwilio && hasTelnyx;
+                    
+                    if (hasTwilio || hasTelnyx) {
+                      return (
+                        <>
+                          <hr className="my-4" />
+                          <h6 className="mb-3">Default Query Service</h6>
+                          <div className="mb-3">
+                            <label htmlFor="serviceSelection" className="form-label">Query from:</label>
+                            <select
+                              id="serviceSelection"
+                              className="form-select"
+                              value={defaultServiceSelection}
+                              onChange={e => setDefaultServiceSelection(e.target.value)}
+                            >
+                              {hasBoth && <option value="both">Both Services</option>}
+                              {hasTwilio && <option value="twilio">Twilio Only</option>}
+                              {hasTelnyx && <option value="telnyx">Telnyx Only</option>}
+                            </select>
+                            <small className="text-muted d-block mt-1">
+                              Default setting for lookups. Can be overridden per lookup below.
+                            </small>
+                          </div>
+                        </>
+                      );
+                    }
+                    return null;
+                  })()}
+                  
                   {/* Version Information */}
                   <div className="mt-4 pt-3 border-top">
                     <h6 className="text-dark mb-2">Version Information</h6>
@@ -916,106 +1149,108 @@ function App() {
                   <button type="button" className="btn-close" aria-label="Close" onClick={() => setIsResultsOpen(false)}></button>
                 </div>
                 <div className="modal-body">
-                  {resultsData.services && (
-                    <div className="mb-3">
-                      <span className="badge bg-primary me-2">
-                        {resultsData.services.includes('twilio') && 'Twilio'}
-                      </span>
-                      {resultsData.services.includes('telnyx') && (
-                        <span className="badge bg-success">Telnyx</span>
-                      )}
-                    </div>
-                  )}
-                  
-                  {/* Multi-service results */}
-                  {resultsData.services ? (
-                    <>
-                      {resultsData.data.twilio && !resultsData.data.twilio.error && (
-                        <div className="result-section mb-3">
-                          <h6 className="text-primary mb-2">Twilio Results</h6>
-                          {resultsData.data.twilio.phone_number && (
-                            <div className="result-item"><strong>Phone Number:</strong> {formatPhoneNumber(resultsData.data.twilio.phone_number)}</div>
-                          )}
-                          {resultsData.data.twilio.country_code && (
-                            <div className="result-item"><strong>Country Code:</strong> {resultsData.data.twilio.country_code}</div>
-                          )}
-                          {resultsData.data.twilio.national_format && (
-                            <div className="result-item"><strong>National Format:</strong> {resultsData.data.twilio.national_format}</div>
-                          )}
-                          <div className="result-item"><strong>Carrier:</strong> {(resultsData.data.twilio.carrier?.name) || (resultsData.data.twilio.line_type_intelligence?.carrier_name) || 'Not available'}</div>
-                          <div className="result-item"><strong>Type:</strong> {(resultsData.data.twilio.carrier?.type) || (resultsData.data.twilio.line_type_intelligence?.type) || 'Not available'}</div>
-                        </div>
-                      )}
-                      
-                      {resultsData.data.telnyx && !resultsData.data.telnyx.error && (
-                        <div className="result-section mb-3">
-                          <h6 className="text-success mb-2">Telnyx Results</h6>
-                          {resultsData.data.telnyx.phone_number && (
-                            <div className="result-item"><strong>Phone Number:</strong> {formatPhoneNumber(resultsData.data.telnyx.phone_number)}</div>
-                          )}
-                          {resultsData.data.telnyx.carrier?.name && (
-                            <div className="result-item"><strong>Carrier:</strong> {resultsData.data.telnyx.carrier.name}</div>
-                          )}
-                          {resultsData.data.telnyx.line_type && (
-                            <div className="result-item"><strong>Type:</strong> {resultsData.data.telnyx.line_type}</div>
-                          )}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      {/* Legacy single-service results */}
-                      <div className="result-section mb-3">
-                        <h6 className="text-primary mb-2">Basic Information</h6>
-                        <div className="result-item"><strong>Phone Number:</strong> {formatPhoneNumber(resultsData.phone_number)}</div>
-                        <div className="result-item"><strong>Country Code:</strong> {resultsData.country_code}</div>
-                        <div className="result-item"><strong>National Format:</strong> {resultsData.national_format}</div>
-                      </div>
-                    </>
-                  )}
-                  
-                  {!resultsData.services && (
-                  <>
-                  <div className="result-section mb-3">
-                    <h6 className="text-primary mb-2">Carrier Information</h6>
-                    <div className="result-item"><strong>Carrier:</strong> {(resultsData.carrier?.name) || (resultsData.line_type_intelligence?.carrier_name) || 'Not available'}</div>
-                    <div className="result-item"><strong>Type:</strong> {(resultsData.carrier?.type) || (resultsData.line_type_intelligence?.type) || 'Not available'}</div>
-                    <div className="result-item"><strong>MNC:</strong> {(resultsData.carrier?.mobile_network_code) || (resultsData.line_type_intelligence?.mobile_network_code) || 'Not available'}</div>
-                    <div className="result-item"><strong>MCC:</strong> {(resultsData.carrier?.mobile_country_code) || (resultsData.line_type_intelligence?.mobile_country_code) || 'Not available'}</div>
-                  </div>
-                  <div className="result-section mb-3">
-                    <h6 className="text-primary mb-2">Validation Status</h6>
-                    <div className="result-item"><strong>Valid:</strong> {resultsData.valid ? 'Yes' : 'No'}</div>
-                    {resultsData.validation_errors && resultsData.validation_errors.length > 0 && (
-                      <div className="result-item"><strong>Validation Errors:</strong> {resultsData.validation_errors.join(', ')}</div>
-                    )}
-                  </div>
-                  {resultsData.caller_name && (
-                    <div className="result-section mb-3">
-                      <h6 className="text-primary mb-2">Caller Information</h6>
-                      <div className="result-item"><strong>Name:</strong> {resultsData.caller_name?.caller_name || 'Unknown'}</div>
-                      <div className="result-item"><strong>Type:</strong> {resultsData.caller_name?.caller_type || 'Unknown'}</div>
-                    </div>
-                  )}
-                  {resultsData.line_type_intelligence && (
-                    <div className="result-section mb-3">
-                      <h6 className="text-primary mb-2">Line Type Information</h6>
-                      <div className="result-item"><strong>Type:</strong> {resultsData.line_type_intelligence?.type || 'Unknown'}</div>
-                      <div className="result-item"><strong>Carrier:</strong> {resultsData.line_type_intelligence?.carrier_name || 'Unknown'}</div>
-                      <div className="result-item"><strong>MNC:</strong> {resultsData.line_type_intelligence?.mobile_network_code || 'Unknown'}</div>
-                      <div className="result-item"><strong>MCC:</strong> {resultsData.line_type_intelligence?.mobile_country_code || 'Unknown'}</div>
-                    </div>
-                  )}
-                  {resultsData.identity_match && (
-                    <div className="result-section mb-3">
-                      <h6 className="text-primary mb-2">Identity Match Information</h6>
-                      <div className="result-item"><strong>Error Code:</strong> {resultsData.identity_match?.error_code ?? 'None'}</div>
-                      <div className="result-item"><strong>Error Message:</strong> {resultsData.identity_match?.error_message ?? 'None'}</div>
-                      <div className="result-item"><strong>Score:</strong> {resultsData.identity_match?.summary_score ?? 'Unknown'}</div>
-                    </div>
-                  )}
-                  </>
-                  )}
+                  {(() => {
+                    // Get the data and source info
+                    const multiService = resultsData.services ? resultsData : null;
+                    const data = multiService ? mergeResults(resultsData) : resultsData;
+                    
+                    return (
+                      <>
+                        {/* Service badges - show which services were queried */}
+                        {multiService && (
+                          <div className="mb-3">
+                            <small className="text-muted">Queried from: </small>
+                            {multiService.services.includes('twilio') && (
+                              <span className="badge bg-primary me-1">Twilio</span>
+                            )}
+                            {multiService.services.includes('telnyx') && (
+                              <span className="badge bg-success">Telnyx</span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Basic Information */}
+                        {(data.phone_number || data.phone_number) && (
+                          <div className="result-section mb-3">
+                            <h6 className="text-primary mb-2">Basic Information</h6>
+                            {data.phone_number && (
+                              <div className="result-item">
+                                <strong>Phone Number:</strong> {formatPhoneNumber(data.phone_number)}
+                              </div>
+                            )}
+                            {data.country_code && (
+                              <div className="result-item">
+                                <strong>Country Code:</strong> {data.country_code}
+                              </div>
+                            )}
+                            {data.national_format && (
+                              <div className="result-item">
+                                <strong>National Format:</strong> {data.national_format}
+                              </div>
+                            )}
+                            {data.valid !== undefined && (
+                              <div className="result-item">
+                                <strong>Valid:</strong> {data.valid ? 'Yes' : 'No'}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Carrier Information */}
+                        {(data.carrier?.name || data.line_type) && (
+                          <div className="result-section mb-3">
+                            <h6 className="text-primary mb-2">Carrier Information</h6>
+                            {data.carrier?.name && (
+                              <div className="result-item d-flex justify-content-between align-items-center">
+                                <div>
+                                  <strong>Carrier:</strong> {data.carrier.name}
+                                </div>
+                                {multiService && data.carrier.source && data.carrier.source.length > 0 && (
+                                  <div>
+                                    {data.carrier.source.map((src, idx) => (
+                                      <span key={idx} className={`badge bg-${src === 'Twilio' ? 'primary' : 'success'} ms-1`}>{src}</span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {(data.carrier?.type || data.line_type) && (
+                              <div className="result-item">
+                                <strong>Type:</strong> {data.carrier?.type || data.line_type}
+                              </div>
+                            )}
+                            {data.carrier?.mobile_network_code && (
+                              <div className="result-item">
+                                <strong>MNC:</strong> {data.carrier.mobile_network_code}
+                              </div>
+                            )}
+                            {data.carrier?.mobile_country_code && (
+                              <div className="result-item">
+                                <strong>MCC:</strong> {data.carrier.mobile_country_code}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Caller Information */}
+                        {data.caller_name && (
+                          <div className="result-section mb-3">
+                            <h6 className="text-primary mb-2">Caller Information</h6>
+                            {data.caller_name.caller_name && (
+                              <div className="result-item">
+                                <strong>Name:</strong> {data.caller_name.caller_name}
+                              </div>
+                            )}
+                            {data.caller_name.caller_type && (
+                              <div className="result-item">
+                                <strong>Type:</strong> {data.caller_name.caller_type}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
                 <div className="modal-footer">
                   <button type="button" className="btn btn-outline-info me-auto" onClick={() => openJsonModal(resultsData)}>
@@ -1061,6 +1296,10 @@ function App() {
                     const cName = item.data?.carrier?.name || item.data?.line_type_intelligence?.carrier_name || 'Unknown';
                     const cType = item.data?.carrier?.type || item.data?.line_type_intelligence?.type || 'Unknown';
                     const callerName = item.data?.caller_name?.caller_name || null;
+                    
+                    // Determine which services were used
+                    const servicesUsed = item.data?.services || [];
+                    
                     return (
                       <div key={index} className="history-item">
                         <div className="history-content" onClick={() => { setResultsData(item.data); setIsResultsOpen(true); setIsHistoryOpen(false); }}>
@@ -1071,6 +1310,17 @@ function App() {
                           <div className="phone-number">{formatPhoneNumber(item.phoneNumber)}</div>
                           <div className="carrier-info">{cName} ({cType})</div>
                           <div className="carrier-info">Country Code: {item.data?.country_code || 'Unknown'}</div>
+                          {/* Service badges */}
+                          {servicesUsed.length > 0 && (
+                            <div className="mt-2">
+                              {servicesUsed.includes('twilio') && (
+                                <span className="badge bg-primary me-1">Twilio</span>
+                              )}
+                              {servicesUsed.includes('telnyx') && (
+                                <span className="badge bg-success">Telnyx</span>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <div className="history-actions">
                           <button 
