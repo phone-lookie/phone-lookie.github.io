@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import './App.css';
-import { convertAlphaToDigits, normalizeToE164Candidate, formatInternationalFlexible, normalizeForLookup } from './phoneUtils';
+import { convertAlphaToDigits, normalizeToE164Candidate, formatInternationalFlexible, normalizeForLookup, extractCountryCode, extractUSAreaCode, getStateFromAreaCode } from './phoneUtils';
 import config, { setTwilioCredentials, clearTwilioCredentials, setTelnyxCredentials, clearTelnyxCredentials, importEnvCredentials } from './config';
 import VERSION_INFO from './version';
 
@@ -1178,11 +1178,30 @@ function App() {
                                 <strong>Phone Number:</strong> {formatPhoneNumber(data.phone_number)}
                               </div>
                             )}
-                            {data.country_code && (
-                              <div className="result-item">
-                                <strong>Country Code:</strong> {data.country_code}
-                              </div>
-                            )}
+                            {(() => {
+                              const phoneNum = data.phone_number || '';
+                              const countryCode = data.country_code || extractCountryCode(phoneNum);
+                              const areaCode = extractUSAreaCode(phoneNum);
+                              const state = areaCode ? getStateFromAreaCode(areaCode) : null;
+                              
+                              return (
+                                <>
+                                  {countryCode && (
+                                    <div className="result-item">
+                                      <strong>Country Code:</strong> +{countryCode}
+                                    </div>
+                                  )}
+                                  {areaCode && (
+                                    <div className="result-item">
+                                      <strong>Area Code:</strong> {areaCode}
+                                      {state && (
+                                        <span className="ms-2 text-muted">({state})</span>
+                                      )}
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
                             {data.national_format && (
                               <div className="result-item">
                                 <strong>National Format:</strong> {data.national_format}
@@ -1300,6 +1319,12 @@ function App() {
                     // Determine which services were used
                     const servicesUsed = item.data?.services || [];
                     
+                    // Extract country code and area code
+                    const phoneNum = item.phoneNumber || '';
+                    const countryCode = item.data?.country_code || extractCountryCode(phoneNum);
+                    const areaCode = extractUSAreaCode(phoneNum);
+                    const state = areaCode ? getStateFromAreaCode(areaCode) : null;
+                    
                     return (
                       <div key={index} className="history-item">
                         <div className="history-content" onClick={() => { setResultsData(item.data); setIsResultsOpen(true); setIsHistoryOpen(false); }}>
@@ -1309,7 +1334,17 @@ function App() {
                           )}
                           <div className="phone-number">{formatPhoneNumber(item.phoneNumber)}</div>
                           <div className="carrier-info">{cName} ({cType})</div>
-                          <div className="carrier-info">Country Code: {item.data?.country_code || 'Unknown'}</div>
+                          {countryCode && (
+                            <div className="carrier-info">Country Code: +{countryCode}</div>
+                          )}
+                          {areaCode && (
+                            <div className="carrier-info">
+                              Area Code: {areaCode}
+                              {state && (
+                                <span className="ms-2 text-muted">({state})</span>
+                              )}
+                            </div>
+                          )}
                           {/* Service badges */}
                           {servicesUsed.length > 0 && (
                             <div className="mt-2">
